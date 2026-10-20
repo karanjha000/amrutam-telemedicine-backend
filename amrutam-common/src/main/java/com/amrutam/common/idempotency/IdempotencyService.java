@@ -17,14 +17,15 @@ public interface IdempotencyService {
      * @param method   HTTP method (e.g. POST)
      * @param path     request path
      * @param bodyHash the salted SHA-256 hex of the request body
-     * @param operation the operation to run when not replayed
-     * @param <Result>  the result type (must implement {@link IdempotencyResult})
+     * @param operation the operation to run when not replayed; its value
+     *                  (typically an {@link IdempotencyResult} or any
+     *                  JSON-serializable object) is persisted and replayed
      * @return the outcome (fresh or replayed)
      */
-    <Result extends IdempotencyResult> IdempotencyOutcome apply(
+    IdempotencyOutcome apply(
             UUID userId,
             String method,
             String path,
             String bodyHash,
-            Supplier<Result> operation);
+            Supplier<Object> operation);
 }

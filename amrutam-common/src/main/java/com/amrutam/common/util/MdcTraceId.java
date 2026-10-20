@@ -34,6 +34,15 @@ public final class MdcTraceId {
     }
 
     /**
+     * Assigns the given trace id to the current thread's MDC.
+     *
+     * @param traceId the trace id to store
+     */
+    public static void assign(String traceId) {
+        MDC.put(KEY, traceId);
+    }
+
+    /**
      * The current trace id, or null when not set.
      *
      * @return the trace id

@@ -7,8 +7,20 @@ import java.util.UUID;
 /**
  * Storage SPI for idempotency keys. A plain interface so the common module
  * stays JPA-agnostic; the api module provides the JPA implementation.
+ *
+ * <p>The state constants live on the interface (rather than the record) so
+ * that switch statements can be written against them directly.
  */
 public interface IdempotencyRepository {
+
+    /** The PENDING state value. */
+    String PENDING = "PENDING";
+
+    /** The COMPLETED state value. */
+    String COMPLETED = "COMPLETED";
+
+    /** The FAILED state value. */
+    String FAILED = "FAILED";
 
     /**
      * Inserts a new PENDING row.
@@ -73,14 +85,5 @@ public interface IdempotencyRepository {
             String state,
             String resultJson,
             Instant createdAt) {
-
-        /** The PENDING state value. */
-        public static final String PENDING = "PENDING";
-
-        /** The COMPLETED state value. */
-        public static final String COMPLETED = "COMPLETED";
-
-        /** The FAILED state value. */
-        public static final String FAILED = "FAILED";
     }
 }

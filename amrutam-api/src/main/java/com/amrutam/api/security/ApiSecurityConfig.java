@@ -9,6 +9,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -54,7 +55,7 @@ public class ApiSecurityConfig {
                 .orElseThrow(() -> new UsernameNotFoundException("No user with username '" + username + "'"));
     }
 
-    private static User toDetails(com.amrutam.api.entity.User u) {
+    private static UserDetails toDetails(com.amrutam.api.entity.User u) {
         String authority = switch (u.getRole()) {
             case PATIENT -> "ROLE_PATIENT";
             case DOCTOR -> "ROLE_DOCTOR";

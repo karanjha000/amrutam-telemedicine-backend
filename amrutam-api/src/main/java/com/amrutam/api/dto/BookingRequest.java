@@ -18,4 +18,15 @@ public record BookingRequest(
         @NotNull UUID slotId,
         String paymentMethod,
         String paymentToken) {
+
+    /**
+     * Convenience constructor carrying an explicit idempotency key.
+     */
+    public BookingRequest(@NotNull UUID doctorId,
+                         @NotNull UUID slotId,
+                         String paymentMethod,
+                         String paymentToken,
+                         String idempotencyKey) {
+        this(doctorId, slotId, paymentMethod, paymentToken);
+    }
 }

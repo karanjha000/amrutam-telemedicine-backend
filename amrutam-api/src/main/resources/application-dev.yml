@@ -1,0 +1,18 @@
+# Dev profile: same PostgreSQL instance as the default (no H2), but
+# Redis-backed caching is disabled so local dev works without a Redis server.
+#
+# Activate with: --spring.profiles.active=dev
+# (or SPRING_PROFILES_ACTIVE=dev)
+amrutam:
+  cache:
+    redis-enabled: false
+
+info:
+  app:
+    name: amrutam-api
+    profile: dev
+    note: dev uses the same postgres (localhost:5432/amrutam); redis caching is off
+
+logging:
+  level:
+    com.amrutam: DEBUG

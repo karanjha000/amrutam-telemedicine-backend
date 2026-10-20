@@ -4,8 +4,12 @@ import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.config.MeterFilter;
+import io.micrometer.core.instrument.config.MeterFilterReply;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Prometheus / Micrometer configuration.
@@ -28,23 +32,25 @@ public class PrometheusConfig {
         return new MeterFilter() {
             @Override
             public Meter.Id map(Meter.Id id) {
-                Tags merged = id.getTags();
-                if (!hasTag(id, "service")) {
+                List<Tag> tags = new ArrayList<>();
+                id.getTags().forEach(tags::add);
+                Tags merged = Tags.of(tags);
+                if (!hasTag(tags, "service")) {
                     merged = merged.and("service", "amrutam-api");
                 }
-                if (!hasTag(id, "apiVersion")) {
+                if (!hasTag(tags, "apiVersion")) {
                     merged = merged.and("apiVersion", "v1");
                 }
-                return id.withTags(merged);
+                return id.replaceTags(merged);
             }
 
             @Override
-            public boolean accept(Meter.Id id) {
-                return true;
+            public MeterFilterReply accept(Meter.Id id) {
+                return MeterFilterReply.ACCEPT;
             }
 
-            private boolean hasTag(Meter.Id id, String key) {
-                for (Tag t : id.getTags()) {
+            private boolean hasTag(List<Tag> tags, String key) {
+                for (Tag t : tags) {
                     if (key.equals(t.getKey())) {
                         return true;
                     }

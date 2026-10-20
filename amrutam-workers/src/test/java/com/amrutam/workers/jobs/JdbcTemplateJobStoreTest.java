@@ -38,8 +38,14 @@ class JdbcTemplateJobStoreTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        DriverManagerDataSource ds = DriverManagerDataSource.builder()
-                .url(URL).username("sa").build();
+        Connection raw = DriverManager.getConnection(URL, "sa", "");
+        raw.createStatement().execute(
+                "CREATE ALIAS IF NOT EXISTS now FOR SYSTEM CURRENT_TIMESTAMP");
+        raw.close();
+        DriverManagerDataSource ds = new DriverManagerDataSource();
+        ds.setUrl(URL);
+        ds.setUsername("sa");
+        ds.setPassword("");
         jdbc = new JdbcTemplate(ds);
         // Load + run the H2 DDL.
         var schema = new String(

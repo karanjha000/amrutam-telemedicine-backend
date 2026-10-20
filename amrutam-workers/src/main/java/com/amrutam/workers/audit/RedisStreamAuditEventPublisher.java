@@ -1,6 +1,8 @@
 package com.amrutam.workers.audit;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -8,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -19,11 +22,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * {@link AuditEventPublisher} that XADDs structured fields onto the
  * configured Redis Stream ({@code amrutam.audit-stream}, default
  * {@code amrutam:audit-events}).
- *
- * <p>Enabled by default (matches missing), so processes that share the
- * workers' Redis by default can publish; deployments that want only the
- * direct DB write set {@code amrutam.audit.redis-stream=false}. The worker
- * that drains the stream is {@code AuditWorker} in this same package.</p>
  */
 @Component
 @ConditionalOnProperty(name = "amrutam.audit.redis-stream", havingValue = "true", matchIfMissing = true)
@@ -35,11 +33,6 @@ public class RedisStreamAuditEventPublisher implements AuditEventPublisher {
     private final ObjectMapper json;
     private final String stream;
 
-    /**
-     * @param redis auto-configured RedisTemplate
-     * @param json  Jackson mapper for the details JSON
-     * @param props workers configuration (stream name)
-     */
     public RedisStreamAuditEventPublisher(RedisTemplate<String, Object> redis,
                                           ObjectMapper json,
                                           WorkersProperties props) {
@@ -54,23 +47,28 @@ public class RedisStreamAuditEventPublisher implements AuditEventPublisher {
         UUID eventId = UUID.randomUUID();
         try {
             String detailsJson = json.writeValueAsString(details == null ? Map.of() : details);
+            byte[] streamKey = stream.getBytes(StandardCharsets.UTF_8);
             redis.execute((RedisConnection conn) -> {
-                var xadd = conn.streamCommands().xAdd(
-                        stream,
-                        Map.of(
-                                "event_id", eventId.toString(),
-                                "actor_id", actorId == null ? "" : actorId.toString(),
-                                "action", action == null ? "" : action,
-                                "target", target == null ? "" : target,
-                                "ip", ip == null ? "" : ip,
-                                "details", detailsJson,
-                                "occurred_at", occurredAt == null
-                                        ? Instant.now().toString() : occurredAt.toString()));
-                return xadd;
+                Map<byte[], byte[]> fields = new LinkedHashMap<>();
+                fields.put(b("event_id"), b(eventId.toString()));
+                fields.put(b("actor_id"), b(actorId == null ? "" : actorId.toString()));
+                fields.put(b("action"), b(action == null ? "" : action));
+                fields.put(b("target"), b(target == null ? "" : target));
+                fields.put(b("ip"), b(ip == null ? "" : ip));
+                fields.put(b("details"), b(detailsJson));
+                fields.put(b("occurred_at"),
+                        b(occurredAt == null ? Instant.now().toString() : occurredAt.toString()));
+                MapRecord<byte[], byte[], byte[]> record =
+                        MapRecord.create(streamKey, fields);
+                return conn.streamCommands().xAdd(record);
             }, true);
             log.debug("Audit event {} (action={}) XADDed to {}", eventId, action, stream);
         } catch (JsonProcessingException e) {
             log.error("Could not serialize audit event {} details: {}", eventId, e.getMessage());
         }
+    }
+
+    private static byte[] b(String s) {
+        return s.getBytes(StandardCharsets.UTF_8);
     }
 }

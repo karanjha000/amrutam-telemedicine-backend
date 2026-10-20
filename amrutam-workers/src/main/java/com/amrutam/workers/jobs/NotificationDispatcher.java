@@ -35,8 +35,8 @@ public class NotificationDispatcher {
         this.allHandlers = handlers;
         this.handlerByType = handlers.stream()
                 .collect(java.util.stream.Collectors.toUnmodifiableMap(
-                        Function.identity(), Function.identity(),
-                        JobHandler::type));
+                        h -> h.type(),
+                        h -> h));
         this.props = props;
     }
 

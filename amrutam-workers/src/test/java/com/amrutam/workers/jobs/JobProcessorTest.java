@@ -1,5 +1,6 @@
 package com.amrutam.workers.jobs;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -11,6 +12,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -20,26 +23,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * does NOT wait for the scheduler — it calls the public {@code poll()}
  * method directly so the run is deterministic.
  *
- * <p>{@code backoff-base-seconds=0} in the test properties makes the retry
- * {@code next_run_at} effectively "now", so the second {@code poll()} call
- * immediately picks up the retried job. Without this the test would have to
- * sleep through the backoff delay.</p>
+ * <p>{@code application-test.yml} sets backoff = 0 so retried jobs are due
+ * immediately, and disables the audit Redis stream so no Redis connection is
+ * required to boot the context.</p>
  */
-@SpringBootTest(properties = {
-        "spring.profiles.active=test",
-        "spring.sql.init.mode=never",
-        "amrutam.workers.max-retries=5",
-        "amrutam.workers.backoff-base-seconds=0",
-        "amrutam.workers.backoff-max-seconds=0",
-        "amrutam.workers.batch-size=10"
-})
+@SpringBootTest
+@ActiveProfiles("test")
+@TestPropertySource("classpath:application-test.yml")
 class JobProcessorTest {
 
     @Autowired JdbcTemplate jdbc;
 
     @Autowired JobProcessor processor;
-
-    @Autowired JdbcTemplateJobStore store;
 
     @Autowired FlakyHandlerConfig.Calls counter;
 
@@ -54,7 +49,7 @@ class JobProcessorTest {
         UUID id = UUID.randomUUID();
         jdbc.update(
                 "INSERT INTO async_jobs (id, type, status, payload, attempt, max_attempt, "
-                        + "scheduled_at, next_run_at) VALUES (?, ?, 'PENDING', ?, 0, 5, now(), now())",
+                        + "scheduled_at, next_run_at) VALUES (?, ?, 'PENDING', ?, 0, 5, '2026-01-01 00:00:00', '2026-01-01 00:00:00')",
                 id, "test.retry", "{\"n\":1}");
 
         processor.poll(); // 1st attempt -> fail, scheduled for retry
@@ -90,9 +85,13 @@ class JobProcessorTest {
     static class FlakyHandlerConfig {
 
         /** Shared call counter, autowired into the test for assertions. */
-        @Bean
-        static class Calls {
+        public static class Calls {
             final AtomicInteger calls = new AtomicInteger(0);
+        }
+
+        @Bean
+        Calls callsCounter() {
+            return new Calls();
         }
 
         @Bean

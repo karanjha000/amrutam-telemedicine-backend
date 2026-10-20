@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -36,7 +37,7 @@ public class AuditLogger implements AuditSink {
 
     @Override
     public void record(AuditEvent event) {
-        if (!log.isEnabled()) {
+        if (!log.isInfoEnabled()) {
             return;
         }
         Map<String, Object> line = new LinkedHashMap<>();

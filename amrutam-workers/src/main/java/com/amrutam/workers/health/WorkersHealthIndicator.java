@@ -35,7 +35,7 @@ public class WorkersHealthIndicator implements HealthIndicator {
     public Health health() {
         Instant last = processor.lastPollAt();
         long pollMs = (long) props.getPollIntervalSeconds() * 1000L;
-        Instant deadline = Instant.now().minus(pollMs * 3);
+        Instant deadline = Instant.now().minus(Duration.ofMillis(pollMs * 3));
         boolean up = last.isAfter(deadline);
         Health.Builder h = up ? Health.up() : Health.down();
         return h.withDetail("pollIntervalMs", pollMs)

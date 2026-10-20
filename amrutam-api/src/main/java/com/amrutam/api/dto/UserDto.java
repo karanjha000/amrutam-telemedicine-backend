@@ -10,6 +10,9 @@ import java.util.UUID;
  * @param displayName display name
  * @param email email
  * @param role role string (PATIENT / DOCTOR / ADMIN)
+ * @param phone phone (nullable)
+ * @param preferredLanguage preferred language (nullable)
  */
-public record UserDto(UUID id, String username, String displayName, String email, String role) {
+public record UserDto(UUID id, String username, String displayName, String email,
+                      String role, String phone, String preferredLanguage) {
 }

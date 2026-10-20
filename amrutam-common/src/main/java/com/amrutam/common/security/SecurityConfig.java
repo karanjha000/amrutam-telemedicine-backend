@@ -2,10 +2,7 @@ package com.amrutam.common.security;
 
 import com.amrutam.common.exception.ApiErrorCode;
 import com.amrutam.common.exception.ErrorBody;
-import com.amrutam.common.exception.RestResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -21,9 +18,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.RequestMatcher;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -36,15 +31,16 @@ import java.nio.charset.StandardCharsets;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private static final RequestMatcher AUTH_JSON_MATCHER =
-            request -> request.getServletPath().startsWith("/api/")
-                    || request.getServletPath().equals("/graphql");
-
+    /**
+     * The shared HTTP security chain.
+     *
+     * @param http the chain builder
+     * @param authHeaderFilter the JWT filter
+     * @return the built chain
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            AuthHeaderFilter authHeaderFilter,
-            ObjectMapper objectMapper) throws IOException {
+            HttpSecurity http, AuthHeaderFilter authHeaderFilter) throws java.lang.Exception {
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(authHeaderFilter, UsernamePasswordAuthenticationFilter.class)
@@ -60,19 +56,24 @@ public class SecurityConfig {
                         .anyRequest()
                         .authenticated())
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) ->
-                                writeError(response, 401,
-                                        new ErrorBody(ApiErrorCode.UNAUTHORIZED, "Authentication required")))
-                        .accessDeniedHandler((request, response, accessDeniedException) ->
-                                writeError(response, 403,
-                                        new ErrorBody(ApiErrorCode.FORBIDDEN, "Access denied"))));
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            writeError(response, 401,
+                                    new ErrorBody(ApiErrorCode.UNAUTHORIZED, "Authentication required"));
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            writeError(response, 403,
+                                    new ErrorBody(ApiErrorCode.FORBIDDEN, "Access denied"));
+                        }));
         return http.build();
     }
 
     /**
-     * Delegates to the single {@link org.springframework.security.authentication.AuthenticationProvider}
-     * contributed by the api module; kept here so that both
-     * {@code @EnableMethodSecurity} and the HTTP chain resolve a consistent manager.
+     * Delegates to the single AuthenticationProvider contributed by the
+     * api module; both {@code @EnableMethodSecurity} and the HTTP chain
+     * resolve this consistent manager.
+     *
+     * @param authenticationProvider the API-layer provider bean
+     * @return the manager
      */
     @Bean
     @Primary
@@ -81,33 +82,44 @@ public class SecurityConfig {
         return new ProviderManager(authenticationProvider);
     }
 
+    /**
+     * The shared password encoder.
+     *
+     * @return a BCrypt encoder
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    static void writeError(HttpServletResponse response, int status, ErrorBody errorBody) throws IOException {
-        response.setStatus(status);
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.getWriter().write(new String(
-                serialize(errorBody).getBytes(StandardCharsets.UTF_8)));
-    }
-
-    private static String serialize(ErrorBody errorBody) {
-        // Small inline serializer to avoid pulling an ObjectMapper into a
-        // static helper; RestResponse has only four fields.
-        String message = errorBody.message() == null ? "" :
-                errorBody.message().replace("\\", "\\\\").replace("\"", "\\\"");
-        return "{\"success\":false,\"data\":null,\"error\":{\"code\":\""
-                + errorBody.code().name() + "\",\"message\":\"" + message
-                + "\"},\"traceId\":null}";
+    static void writeError(HttpServletResponse response, int status, ErrorBody errorBody) {
+        try {
+            response.setStatus(status);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+            String message =
+                    errorBody.message() == null
+                            ? ""
+                            : errorBody.message().replace("\\", "\\\\").replace("\"", "\\\"");
+            String json =
+                    "{\"success\":false,\"data\":null,\"error\":{\"code\":\""
+                            + errorBody.code().name()
+                            + "\",\"message\":\""
+                            + message
+                            + "\"},\"traceId\":null}";
+            response.getWriter().write(json);
+        } catch (java.io.IOException e) {
+            // Nothing useful to do if the response can't be written — the client
+            // is already gone; log and drop.
+            org.slf4j.LoggerFactory.getLogger(SecurityConfig.class)
+                    .warn("Could not write error response: {}", e.getMessage());
+        }
     }
 
     /**
-     * The authentication provider is supplied by the consuming application
-     * (the api module); the bean is left unregistered here on purpose so
-     * the common module stays free of api-layer domain services.
+     * Convenient accessor used by downstream code/tests.
+     *
+     * @return the current authentication or null
      */
     static Authentication currentAuthenticationOrNull() {
         return SecurityContextHolder.getContext().getAuthentication();

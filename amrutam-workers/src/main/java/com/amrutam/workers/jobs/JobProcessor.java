@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 /**
  * The async_jobs polling loop.
  *
- * <p>Every {@code poll-interval-seconds} it fetches due PENDING jobs via the
+ * <p>Every poll cycle (fixed delay, default {@code 5000} ms) it fetches due PENDING jobs via the
  * {@link JobStore} (raw JdbcTemplate against the shared table — workers does
  * <em>not</em> own {@code AsyncJobRepository}, that is amrutam-api's),
  * claims each one with a time-boxed lease, hands it to the matching
@@ -121,6 +121,9 @@ public class JobProcessor {
                         job.id(), attempt, e.getMessage());
             } else {
                 Instant nextRun = nextRunAfterFailure(attempt, now);
+                // The row's attempt column was already bumped to `attempt`
+                // during claim(); we pass that value back so the CAS in
+                // scheduleRetry() still matches the actual row state.
                 jobStore.scheduleRetry(job.id(), attempt, nextRun);
             }
         }

@@ -1,7 +1,7 @@
 package com.amrutam.workers.audit;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 /**
  * Integration test for {@link AuditWorker} against a real Redis.
@@ -24,10 +24,7 @@ class AuditWorkerTest {
      * the docker-compose CI exposes a Redis service to this test job.
      */
     @Test
-    @EnabledIfSystemProperty(
-            name = "AMRUTAM_WORKERS_REDIS",
-            matches = "true",
-            disabledReason = "requires a local Redis — run with -DAMRUTAM_WORKERS_REDIS=true")
+    @Disabled("requires a local Redis — run with -DAMRUTAM_WORKERS_REDIS=true")
     void drainPersistsStreamEntries() {
         // Intentionally left as a stub for now (see class Javadoc).
     }

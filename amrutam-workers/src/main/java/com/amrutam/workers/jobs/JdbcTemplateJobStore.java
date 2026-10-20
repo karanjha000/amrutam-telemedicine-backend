@@ -53,7 +53,7 @@ public class JdbcTemplateJobStore implements JobStore {
                         + "WHERE status = 'PENDING' AND next_run_at <= ? "
                         + "ORDER BY scheduled_at LIMIT ?",
                 DUE_JOB_ROW_MAPPER,
-                new Timestamp(before), batchSize);
+                java.sql.Timestamp.from(before), batchSize);
     }
 
     @Override
@@ -64,7 +64,7 @@ public class JdbcTemplateJobStore implements JobStore {
                         + "updated_at = now() "
                         + "WHERE id = ? AND status = 'PENDING' "
                         + "AND (lease_owner IS NULL OR lease_expiry < now())",
-                owner, new Timestamp(leaseExpiry), id);
+                owner, java.sql.Timestamp.from(leaseExpiry), id);
         return updated == 1;
     }
 
@@ -82,7 +82,7 @@ public class JdbcTemplateJobStore implements JobStore {
                 "UPDATE async_jobs SET status = 'PENDING', next_run_at = ?, "
                         + "lease_owner = NULL, lease_expiry = NULL, updated_at = now() "
                         + "WHERE id = ? AND attempt = ?",
-                new Timestamp(nextRun), id, attempt);
+                java.sql.Timestamp.from(nextRun), id, attempt);
     }
 
     /**

@@ -44,10 +44,11 @@ public record RestResponse<T>(boolean success, T data, ErrorBody error, String t
     /**
      * Builds a failure envelope.
      *
-     * @param e the error body
-     * @return a failure envelope for a void payload
+     * @param <T> the (null) payload type, inferred from the caller's target
+     * @param e   the error body
+     * @return a failure envelope with a null payload
      */
-    public static RestResponse<Void> error(ErrorBody e) {
+    public static <T> RestResponse<T> error(ErrorBody e) {
         return new RestResponse<>(false, null, e, MDC.get(TRACE_ID_MDC_KEY));
     }
 }

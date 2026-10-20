@@ -1,0 +1,40 @@
+# Amrutam GraphQL schema (spring-graphql).
+#
+# The `Instant` scalar is coerced via com.amrutam.api.graphql.InstantCoercion
+# (serialize = toString, parse = Instant.parse). GraphQL queries resolve into
+# plain DTOs (com.amrutam.api.graphql.dto.*) and delegate to the REST service
+# layer; no new data access happens here.
+
+scalar Instant
+
+type Query {
+    # All active doctors.
+    doctors: [Doctor!]!
+    # A single doctor by id (null when unknown).
+    doctor(id: ID!): Doctor
+    # The consultations a given user (patient or doctor) is involved in.
+    consultations(user: ID!): [Consultation!]!
+}
+
+type Doctor {
+    id: ID!
+    name: String!
+    specialization: String!
+    rating: Float!
+    yearsExperience: Int!
+    # Availability window; times coerced via the Instant scalar.
+    availableSlots(from: Instant, to: Instant): [Slot!]!
+}
+
+type Slot {
+    id: ID!
+    startAt: Instant!
+    endAt: Instant!
+}
+
+type Consultation {
+    id: ID!
+    doctorId: ID!
+    scheduledAt: Instant!
+    status: String!
+}

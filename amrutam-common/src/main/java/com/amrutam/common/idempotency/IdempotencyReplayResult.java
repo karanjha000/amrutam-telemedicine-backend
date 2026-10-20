@@ -1,6 +1,4 @@
-package com.amrutam.common.exception;
-
-import com.amrutam.common.idempotency.IdempotencyResult;
+package com.amrutam.common.idempotency;
 
 /**
  * An IdempotencyResult whose payload is the stored JSON string from a

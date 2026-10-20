@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 
 import java.time.Duration;
@@ -50,9 +51,9 @@ public class CacheConfig {
     @ConditionalOnProperty(prefix = "amrutam.cache", name = "redis-enabled",
             havingValue = "true", matchIfMissing = true)
     public CacheManager redisCacheManager(RedisConnectionFactory factory) {
-        RedisCacheManager.Builder builder = RedisCacheManager.builder(factory)
-                .cacheDefaults(defaultConfiguration(Duration.ofMinutes(10)))
-                .disableCachingNullValues();
+        RedisCacheManager.RedisCacheManagerBuilder builder =
+                RedisCacheManager.RedisCacheManagerBuilder.fromConnectionFactory(factory)
+                        .cacheDefaults(defaultConfiguration(Duration.ofMinutes(10)));
         for (Map.Entry<String, Duration> e : CACHE_TTLS.entrySet()) {
             builder.withCacheConfiguration(e.getKey(), defaultConfiguration(e.getValue()));
         }
@@ -80,6 +81,6 @@ public class CacheConfig {
                 .entryTtl(ttl)
                 .serializeValuesWith(
                         RedisSerializationContext.SerializationPair
-                                .fromJava(new org.springframework.data.redis.serializer.GenericsAwareSerializer()));
+                                .fromSerializer(new GenericJackson2JsonRedisSerializer()));
     }
 }

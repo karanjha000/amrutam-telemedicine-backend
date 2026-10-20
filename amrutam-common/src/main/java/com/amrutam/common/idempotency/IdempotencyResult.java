@@ -14,4 +14,14 @@ public interface IdempotencyResult {
      * @return the payload object
      */
     Object payload();
+
+    /**
+     * Wraps an arbitrary object as an {@link IdempotencyResult}.
+     *
+     * @param payload the payload
+     * @return a wrapping instance
+     */
+    static IdempotencyResult of(Object payload) {
+        return () -> payload;
+    }
 }

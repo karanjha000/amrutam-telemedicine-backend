@@ -2,10 +2,14 @@ package com.amrutam.api.cache;
 
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.support.AbstractCacheManagerUtils;
+import org.springframework.cache.support.AbstractCacheManager;
+import org.springframework.cache.support.SimpleValueWrapper;
+import org.springframework.cache.Cache.ValueWrapper;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -20,7 +24,7 @@ import java.util.concurrent.ConcurrentMap;
  * per cache independently. Suitable for dev / tests where cross-instance
  * consistency is not required.</p>
  */
-public class InMemoryCacheManager implements CacheManager {
+public class InMemoryCacheManager extends AbstractCacheManager {
 
     private final Map<String, InMemoryCache> caches = new ConcurrentHashMap<>();
 
@@ -45,6 +49,12 @@ public class InMemoryCacheManager implements CacheManager {
     private InMemoryCache newCache(String name) {
         Duration ttl = ttlByCache.getOrDefault(name, Duration.ofMinutes(10));
         return new InMemoryCache(name, ttl);
+    }
+
+    @Override
+    protected Collection<? extends Cache> loadCaches() {
+        // Caches are created on demand via {@link #getCache(String)}; nothing to preload.
+        return List.of();
     }
 
     private final class InMemoryCache implements Cache {
@@ -76,16 +86,32 @@ public class InMemoryCacheManager implements CacheManager {
         }
 
         @Override
-        public Object get(Object key) {
+        @SuppressWarnings("unchecked")
+        public <T> T get(Object key, java.util.concurrent.Callable<T> valueLoader) {
             ExpiringCacheValue v = peek(key);
-            return v == null ? null : v.value();
+            if (v != null) {
+                return (T) v.value();
+            }
+            T loaded;
+            try {
+                loaded = valueLoader.call();
+            } catch (Exception e) {
+                throw new Cache.ValueRetrievalException(key, valueLoader, e);
+            }
+            put(key, loaded);
+            return loaded;
         }
 
         @Override
-        public Object put(Object key, Object value) {
-            Object previous = entries.put(String.valueOf(key),
+        public ValueWrapper get(Object key) {
+            ExpiringCacheValue v = peek(key);
+            return v == null ? null : new SimpleValueWrapper(v.value());
+        }
+
+        @Override
+        public void put(Object key, Object value) {
+            entries.put(String.valueOf(key),
                     new ExpiringCacheValue(value, System.currentTimeMillis() + ttl.toMillis()));
-            return previous == null ? null : previous.value();
         }
 
         @Override

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logback for amrutam-api.
+
+  Two sinks:
+  - CONSOLE: standard rolling-to-stdout (captured by Docker / the platform).
+  - AUDIT: a dedicated rolling file for the "audit" logger
+    (${AMRUTAM_AUDIT_LOG:-logs/audit.log}); audit trail events are written
+    here by the audit module (amrutam-common AuditLogger + api sinks).
+
+  The %X{traceId} conversion is populated by MdcTraceId on every request.
+-->
+<configuration>
+
+    <property name="AUDIT_LOG_FILE" value="${AMRUTAM_AUDIT_LOG:-logs/audit.log}"/>
+    <property name="CONSOLE_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{traceId}] %logger{36} - %msg%n"/>
+    <property name="AUDIT_PATTERN"
+              value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} [%X{traceId}] %-5level %logger{40} - %msg%n"/>
+
+    <!-- Console -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- AUDIT: rolling file, 30-day retention, 10MB per file, 1GB total -->
+    <appender name="AUDIT" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${AUDIT_LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${AUDIT_LOG_FILE}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>10MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${AUDIT_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Route audit events to the AUDIT file AND the console -->
+    <logger name="audit" level="INFO" additivity="false">
+        <appender-ref ref="AUDIT"/>
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

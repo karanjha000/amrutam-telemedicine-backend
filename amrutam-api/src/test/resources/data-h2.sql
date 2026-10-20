@@ -1,0 +1,3 @@
+-- Intentionally empty: tests create their own fixtures programmatically
+-- (repository saves in @BeforeEach). No data.sql-style seeding is needed
+-- under the test profile.

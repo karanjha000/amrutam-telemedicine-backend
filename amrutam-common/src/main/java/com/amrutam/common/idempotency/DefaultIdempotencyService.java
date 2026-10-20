@@ -1,7 +1,8 @@
 package com.amrutam.common.idempotency;
 
 import com.amrutam.common.exception.ConflictException;
-import com.amrutam.common.exception.IdempotencyReplayResult;
+import com.amrutam.common.idempotency.IdempotencyRepository;
+import com.amrutam.common.idempotency.IdempotencyRepository.StoredKey;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,16 +61,16 @@ public class DefaultIdempotencyService implements IdempotencyService {
     }
 
     @Override
-    public <Result extends IdempotencyResult> IdempotencyOutcome apply(
-            UUID userId, String method, String path, String bodyHash, Supplier<Result> operation) {
+    public IdempotencyOutcome apply(
+            UUID userId, String method, String path, String bodyHash, Supplier<Object> operation) {
 
         var existing = repository.findActive(userId, method, path, bodyHash);
         if (existing.isPresent()) {
-            IdempotencyRepository.StoredKey row = existing.get();
+            StoredKey row = existing.get();
             switch (row.state()) {
-                case IdempotencyRepository.StoredKey.COMPLETED:
+                case IdempotencyRepository.COMPLETED:
                     return new ReplayedOutcome(row.resultJson());
-                case IdempotencyRepository.StoredKey.PENDING:
+                case IdempotencyRepository.PENDING:
                     if (isExpired(row)) {
                         log.info("Expiring stale PENDING key userId={} {} {}", userId, method, path);
                         repository.markFailed(userId, method, path, bodyHash);
@@ -87,17 +88,19 @@ public class DefaultIdempotencyService implements IdempotencyService {
         return runFresh(userId, method, path, bodyHash, operation);
     }
 
-    private <Result extends IdempotencyResult> IdempotencyOutcome runFresh(
-            UUID userId, String method, String path, String bodyHash, Supplier<Result> operation) {
-        Result result = operation.get();
+    private IdempotencyOutcome runFresh(
+            UUID userId, String method, String path, String bodyHash, Supplier<Object> operation) {
+        Object raw = operation.get();
+        IdempotencyResult result = raw instanceof IdempotencyResult r ? r : IdempotencyResult.of(raw);
         String resultJson = serialize(result);
         repository.markCompleted(userId, method, path, bodyHash, resultJson);
         return new FreshOutcome(result, resultJson);
     }
 
-    private String serialize(IdempotencyResult result) {
+    private String serialize(Object result) {
         try {
-            Object payload = result.payload();
+            Object payload =
+                    result instanceof IdempotencyResult r ? r.payload() : result;
             if (payload == null) {
                 return null;
             }
@@ -108,7 +111,7 @@ public class DefaultIdempotencyService implements IdempotencyService {
         }
     }
 
-    private boolean isExpired(IdempotencyRepository.StoredKey row) {
+    private boolean isExpired(StoredKey row) {
         if (row.createdAt() == null) {
             return true;
         }

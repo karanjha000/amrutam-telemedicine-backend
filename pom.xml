@@ -27,6 +27,7 @@
 
     <properties>
         <java.version>21</java.version>
+        <spring-boot.version>3.3.4</spring-boot.version>
         <springdoc.version>2.5.0</springdoc.version>
         <jwc.version>9.0</jwc.version>
         <jjwt.version>0.11.5</jjwt.version>
@@ -62,7 +63,7 @@
             <dependency>
                 <groupId>com.auth0</groupId>
                 <artifactId>java-jwt</artifactId>
-                <version>${jwc.version}</version>
+                <version>4.4.0</version>
             </dependency>
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
@@ -90,16 +91,6 @@
                 <version>${resilience4j.version}</version>
             </dependency>
 
-            <!-- Managed by the Spring Boot parent, re-listed here so the
-                 intent is explicit for consumers of this parent. -->
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter-data-redis</artifactId>
-            </dependency>
-            <dependency>
-                <groupId>io.micrometer</groupId>
-                <artifactId>micrometer-registry-prometheus</artifactId>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 

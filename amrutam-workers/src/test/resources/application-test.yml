@@ -24,3 +24,12 @@ amrutam:
     enabled: true
     poll-interval-ms: 1
     saga-reconciliation-interval-ms: 60000
+    backoff-base-seconds: 0
+    backoff-max-seconds: 0
+    batch-size: 10
+
+  audit:
+    redis-stream: false
+
+  notifications:
+    redis-sink: false

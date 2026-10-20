@@ -19,9 +19,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * <p>Registered only when no other {@link NotificationSink} bean is present
  * (e.g. the Redis sink, enabled with
  * {@code amrutam.notifications.redis-sink=true}).</p>
+ *
+ * <p>Declared as an inner {@code @Bean} of a plain {@code @Configuration}
+ * (see {@code NotifyConfig}) rather than an annotated class so that
+ * {@code @ConditionalOnMissingBean(NotificationSink.class)} is evaluated
+ * against the fully-built bean graph instead of the current class-scanning
+ * order (a documented Spring pitfall for same-package candidates).</p>
  */
-@Component
-@ConditionalOnMissingBean
 public class LoggingNotificationSink implements NotificationSink {
 
     private static final Logger NOTIFICATION = LoggerFactory.getLogger("NOTIFICATION");

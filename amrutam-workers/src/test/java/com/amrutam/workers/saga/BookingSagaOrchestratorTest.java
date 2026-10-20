@@ -1,8 +1,8 @@
 package com.amrutam.workers.saga;
 
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -19,14 +21,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * slot released, consultation CANCELLED) plus the fresh-consultation
  * negative case.
  *
- * <p>Uses {@code @SpringBootTest} with the {@code test} profile so the
- * {@code TransactionTemplate} bean is present. The orchestrator is also
- * called manually (no scheduler wait).</p>
+ * <p>{@code @SpringBootTest} boots the real context under the {@code test}
+ * profile so the auto-configured {@code TransactionTemplate} bean is
+ * present. {@code reconcile()} is called manually — no scheduler wait.</p>
  */
-@SpringBootTest(properties = {
-        "spring.profiles.active=test",
-        "spring.sql.init.mode=never"
-})
+@SpringBootTest
+@ActiveProfiles("test")
+@TestPropertySource("classpath:application-test.yml")
 class BookingSagaOrchestratorTest {
 
     @Autowired JdbcTemplate jdbc;
@@ -49,10 +50,12 @@ class BookingSagaOrchestratorTest {
         UUID slot = UUID.randomUUID();
         jdbc.update(
                 "INSERT INTO availability_slots (id, doctor_id, start_at, end_at, status, "
-                        + "locked_by_id, lock_expires_at) VALUES (?, ?, now(), now() + interval '1 hour', ?, ?, ?)",
+                        + "locked_by_id, lock_expires_at) VALUES (?, ?, now(), now() + 3600, ?, ?, ?)",
                 slot, doctor, status,
                 "AVAILABLE".equals(status) ? null : patient,
-                "LOCKED".equals(status) ? new Timestamp(Instant.now().plus(1, ChronoUnit.HOURS)) : null);
+                "LOCKED".equals(status)
+                        ? new Timestamp(Instant.now().plus(Duration.ofHours(1)).toEpochMilli())
+                        : null);
         return slot;
     }
 
@@ -62,7 +65,7 @@ class BookingSagaOrchestratorTest {
                 "INSERT INTO consultations (id, doctor_id, patient_id, slot_id, status, created_at) "
                         + "VALUES (?, ?, ?, ?, ?, ?)",
                 c, doctor, patient, slot, status,
-                new Timestamp(Instant.now().minus(createdAtMinusMinutes, ChronoUnit.MINUTES)));
+                new Timestamp(Instant.now().minus(Duration.ofMinutes(createdAtMinusMinutes)).toEpochMilli()));
         return c;
     }
 

@@ -34,6 +34,9 @@ public class AsyncJob {
     @Column(columnDefinition = "uuid")
     private UUID id;
 
+    @Column(name = "user_id")
+    private UUID userId;
+
     @Column(nullable = false, length = 64)
     private String type;
 
@@ -80,6 +83,16 @@ public class AsyncJob {
      * @param id id
      */
     public void setId(UUID id) { this.id = id; }
+
+    /**
+     * @return userId
+     */
+    public UUID getUserId() { return userId; }
+
+    /**
+     * @param userId userId
+     */
+    public void setUserId(UUID userId) { this.userId = userId; }
 
     /**
      * @return type

@@ -18,21 +18,20 @@ import java.util.UUID;
  * JPA repository for {@link IdempotencyKey}.
  *
  * <p>Also implements the shared {@link IdempotencyRepository} SPI
- * (defined in amrutam-common) via default methods, so a single bean in the
- * api module serves both the JPA world and the common kernel's
- * {@code IdempotencyService}.</p>
+ * (amrutam-common) via default methods, so the common
+ * {@code DefaultIdempotencyService} can be wired against a single api bean.</p>
  */
 public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, UUID>, IdempotencyRepository {
 
     /**
-     * Look up an idempotency row in one of the given states.
+     * Look up a row in any of the given states.
      *
      * @param userId user
      * @param method http method
      * @param path request path
      * @param bodyHash body hash
      * @param states states to match
-     * @return the most recent matching row, if any
+     * @return the most recent matching row
      */
     Optional<IdempotencyKey> findFirstByUserIdAndMethodAndPathAndBodyHashAndStateIn(
             UUID userId, String method, String path, String bodyHash, List<IdempotencyState> states);
@@ -45,6 +44,7 @@ public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, 
      * @param method http method
      * @param path request path
      * @param bodyHash body hash
+     * @param now timestamp
      * @return the saved row
      */
     @Modifying
@@ -88,6 +88,7 @@ public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, 
      * @param path request path
      * @param bodyHash body hash
      * @param resultJson serialized result
+     * @param now timestamp
      * @return rows affected
      */
     @Modifying
@@ -117,6 +118,7 @@ public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, 
      * @param method http method
      * @param path request path
      * @param bodyHash body hash
+     * @param now timestamp
      * @return rows affected
      */
     @Modifying

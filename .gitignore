@@ -1,0 +1,8 @@
+
+# Local secrets
+.env
+.env.local
+
+# Maven build output
+target/
+**/target/

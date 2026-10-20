@@ -35,6 +35,12 @@ public class AuthHeaderFilter extends OncePerRequestFilter {
      */
     public static final String AUTH_CLAIMS_ATTR = AuthHeaderFilter.class.getName() + ".CLAIMS";
 
+    /**
+     * Convenience alias for the same attribute under a short key, so that
+     * consuming code does not have to repeat the FQCN.
+     */
+    public static final String AUTH_CLAIMS_ALIASED_ATTR = "amrutam.authClaims";
+
     private static final Logger log = LoggerFactory.getLogger(AuthHeaderFilter.class);
 
     private static final List<String> SKIP_PATH_PREFIXES =
@@ -69,6 +75,7 @@ public class AuthHeaderFilter extends OncePerRequestFilter {
         Claims claims = validateOrNull(token);
         if (claims != null) {
             request.setAttribute(AUTH_CLAIMS_ATTR, claims);
+            request.setAttribute(AUTH_CLAIMS_ALIASED_ATTR, claims);
             SecurityContextHolder.getContext().setAuthentication(authenticationFor(claims));
         }
         // Missing/invalid: do NOT wipe the context (nothing was set in the

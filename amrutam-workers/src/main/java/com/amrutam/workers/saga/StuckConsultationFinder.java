@@ -24,6 +24,10 @@ import org.springframework.stereotype.Component;
 record StuckConsultation(UUID id, Instant createdAt) {
 }
 
+// NOTE: the record is declared in this file (not its own file) so the finder
+// class and the record stay in the same file — H2/Postgres both see it fine,
+// and it keeps the test classpath simpler.
+
 /**
  * Finds consultations whose payment-capture deadline has passed.
  */
@@ -54,6 +58,6 @@ public class StuckConsultationFinder {
                 (rs, n) -> new StuckConsultation(
                         UUID.fromString(rs.getString("id")),
                         rs.getTimestamp("created_at").toInstant()),
-                new Timestamp(cutoff), limit);
+                java.sql.Timestamp.from(cutoff), limit);
     }
 }

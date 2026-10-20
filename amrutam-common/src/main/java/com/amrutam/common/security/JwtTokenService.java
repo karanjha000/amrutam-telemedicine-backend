@@ -4,12 +4,13 @@ import com.amrutam.common.exception.AmrutamException;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,7 +27,6 @@ public class JwtTokenService implements JwTokenService {
 
     private final Algorithm algorithm;
     private final String issuer;
-    private final long defaultTtlSeconds;
     private final int clockSkewSeconds;
     private final Clock clock;
 
@@ -46,55 +46,60 @@ public class JwtTokenService implements JwTokenService {
      * @param clock the clock used for issue/expiry evaluation
      */
     public JwtTokenService(JwtProperties props, Clock clock) {
-        this.algorithm = Algorithm.HMAC256(key(props.getSecret()));
+        this.algorithm = Algorithm.HMAC256(normalizeKey(props.getSecret()));
         this.issuer = props.getIssuer();
-        this.defaultTtlSeconds = props.getTtlSeconds();
         this.clockSkewSeconds = props.getClockSkewSeconds();
         this.clock = clock;
     }
 
-    private static SecretKey key(String secret) {
+    /**
+     * Normalizes the configured secret to exactly 32 bytes so the derived
+     * key length is explicit; short secrets are zero-padded, long ones
+     * truncated.
+     *
+     * @param secret the raw secret
+     * @return a normalized 32-char ASCII key
+     */
+    private static String normalizeKey(String secret) {
         byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
-        // Derive a 32-byte key so the length is explicit rather than "whatever
-        // the caller configured"; short secrets are padded, long ones truncated.
         byte[] normalized = new byte[32];
         System.arraycopy(bytes, 0, normalized, 0, Math.min(bytes.length, 32));
-        return new SecretKeySpec(normalized, "HmacSHA256");
+        return new String(normalized, StandardCharsets.US_ASCII);
     }
 
     @Override
     public String issue(Subject subject, String jti, long ttlSeconds) {
         long now = clock.millis() / 1000L;
-        return newBuilder(subject, jti)
-                .withIssuedAt(new java.util.Date(now * 1000L))
-                .withExpiresAt(new java.util.Date((now + ttlSeconds) * 1000L))
-                .sign(algorithm);
-    }
-
-    private com.auth0.jwt.JWT.Builder newBuilder(Subject subject, String jti) {
-        com.auth0.jwt.JWT.Builder builder = JWT.create()
+        com.auth0.jwt.JWTCreator.Builder builder = JWT.create()
                 .withIssuer(issuer)
                 .withSubject(subject.username())
                 .withClaim(CLAIM_USER_ID, subject.userId().toString())
-                .withClaim(CLAIM_ROLES, subject.roles());
+                .withClaim(CLAIM_ROLES, subject.roles())
+                .withIssuedAt(new Date(now * 1000L))
+                .withExpiresAt(new Date((now + ttlSeconds) * 1000L));
         if (jti != null) {
             builder.withJWTId(jti);
         }
-        return builder;
+        return builder.sign(algorithm);
     }
 
     @Override
     public Claims parseAndValidate(String token) {
-        JWTVerifier verifier = JWT.require(algorithm)
-                .withIssuer(issuer)
-                .withAllowedClockSkewSeconds(clockSkewSeconds)
-                .build();
+        JWTVerifier verifier = JWT.require(algorithm).withIssuer(issuer).build();
         DecodedJWT jwt;
         try {
             jwt = verifier.verify(token);
-        } catch (com.auth0.jwt.exceptions.TokenExpiredException e) {
-            throw JwtException.expired("Token expired: " + e.getMessage());
-        } catch (com.auth0.jwt.exceptions.JWTVerificationException e) {
+        } catch (TokenExpiredException e) {
+            long nowSec = clock.millis() / 1000L;
+            DecodedJWT decoded = JWT.decode(token);
+            long expSec =
+                    decoded.getExpiresAt() == null ? 0L : decoded.getExpiresAt().getTime() / 1000L;
+            if (expSec + clockSkewSeconds >= nowSec) {
+                jwt = decoded;
+            } else {
+                throw JwtException.expired("Token expired: " + e.getMessage());
+            }
+        } catch (JWTVerificationException e) {
             throw JwtException.unauthorized("Invalid token: " + e.getMessage());
         }
         return toClaims(jwt);
@@ -102,10 +107,13 @@ public class JwtTokenService implements JwTokenService {
 
     @Override
     public boolean canParse(String token) {
+        if (token == null || token.isEmpty()) {
+            return false;
+        }
         try {
             DecodedJWT jwt = JWT.decode(token);
             return jwt != null && jwt.getPayload() != null;
-        } catch (AmrutamException | IllegalArgumentException e) {
+        } catch (AmrutamException | IllegalArgumentException | NullPointerException e) {
             return false;
         }
     }

@@ -52,6 +52,6 @@ public class AuditLogWriter {
                 target,
                 ip,
                 details,
-                new Timestamp(occurredAt));
+                java.sql.Timestamp.from(occurredAt));
     }
 }
