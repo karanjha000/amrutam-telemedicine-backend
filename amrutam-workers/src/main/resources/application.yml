@@ -1,0 +1,72 @@
+spring:
+  application:
+    name: amrutam-workers
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:amrutam}
+    username: ${DB_USER:amrutam}
+    password: ${DB_PASSWORD:amrutam}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  # The api module owns the schema (schema.sql). Workers never initializes
+  # the database — it only reads/writes shared rows.
+  sql:
+    init:
+      mode: never
+
+  jackson:
+    time-zone: UTC
+
+amrutam:
+  workers:
+    enabled: true
+    poll-interval-seconds: 5
+    poll-interval-ms: 5000
+    batch-size: 50
+    job-lease-seconds: 60
+    saga-reconciliation-interval-seconds: 30
+    saga-reconciliation-interval-ms: 30000
+    saga-stuck-after-minutes: 15
+    backoff-base-seconds: 30
+    backoff-max-seconds: 900
+    max-retries: 5
+    notification-channel: "amrutam:notifications"
+    audit-stream: "amrutam:audit-events"
+
+  notifications:
+    # Default sink is the SLF4J "NOTIFICATION" logger. Set to true to PUBLISH
+    # on the configured channel instead.
+    redis-sink: false
+
+  audit:
+    # Driven by the same stream amrutam-api (or any producer) XADDs onto.
+    redis-stream: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,prometheus,metrics"
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: amrutam-workers
+
+server:
+  port: ${SERVER_PORT:8082}
+
+logging:
+  level:
+    com.amrutam.workers: INFO
+    AUDIT: INFO
+    NOTIFICATION: INFO
