@@ -84,7 +84,7 @@ public class JwtTokenService implements JwTokenService {
     }
 
     @Override
-    public Claims parseAndValidate(String token) {
+    public JwTokenService.Claims parseAndValidate(String token) {
         JWTVerifier verifier = JWT.require(algorithm).withIssuer(issuer).build();
         DecodedJWT jwt;
         try {
@@ -118,13 +118,13 @@ public class JwtTokenService implements JwTokenService {
         }
     }
 
-    private Claims toClaims(DecodedJWT jwt) {
+    private JwTokenService.Claims toClaims(DecodedJWT jwt) {
         UUID userId = UUID.fromString(jwt.getClaim(CLAIM_USER_ID).asString());
         List<String> roles =
                 jwt.getClaim(CLAIM_ROLES).asList(String.class) == null
                         ? List.of()
                         : List.copyOf(jwt.getClaim(CLAIM_ROLES).asList(String.class));
-        return new Claims(
+        return new JwTokenService.Claims(
                 userId,
                 roles,
                 jwt.getId(),

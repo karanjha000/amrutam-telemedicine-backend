@@ -1,6 +1,6 @@
 package com.amrutam.common;
 
-import com.amrutam.common.security.Claims;
+import com.amrutam.common.security.JwTokenService.Claims;
 import com.amrutam.common.security.JwTokenService.Subject;
 import com.amrutam.common.security.JwtException;
 import com.amrutam.common.security.JwtProperties;

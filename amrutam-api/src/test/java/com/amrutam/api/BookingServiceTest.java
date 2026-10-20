@@ -114,7 +114,7 @@ class BookingServiceTest {
 
     @Test
     void bookHappyPath() {
-        BookingRequest req = new BookingRequest(doctorId, slotId, "card", "tok_test", null);
+        BookingRequest req = new BookingRequest(doctorId, slotId, "card", "tok_test");
 
         BookConsultationResponse resp = bookingService.book(req, patientId, null);
 
@@ -137,7 +137,7 @@ class BookingServiceTest {
 
     @Test
     void bookIdempotentReplay() {
-        BookingRequest req = new BookingRequest(doctorId, slotId, "card", "tok_test", null);
+        BookingRequest req = new BookingRequest(doctorId, slotId, "card", "tok_test");
         String key = "key-" + UUID.randomUUID();
 
         BookConsultationResponse first = bookingService.book(req, patientId, key);
@@ -169,7 +169,7 @@ class BookingServiceTest {
 
         // Different request shape (different payment method + explicit key)
         // so it is NOT an idempotency replay of any prior call.
-        BookingRequest req = new BookingRequest(doctorId, slotId, "upi", "tok-race", null);
+        BookingRequest req = new BookingRequest(doctorId, slotId, "upi", "tok-race");
         assertThatThrownBy(() -> bookingService.book(req, patientId, "race-key-" + UUID.randomUUID()))
                 .isInstanceOf(ConflictException.class);
 

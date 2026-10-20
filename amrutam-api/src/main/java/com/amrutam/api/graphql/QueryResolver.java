@@ -65,28 +65,30 @@ public class QueryResolver {
     }
 
     /**
-     * All doctors (first page; the GraphQL surface has no paging yet).
+     * All doctors (paged; the GraphQL surface has no page argument yet).
      *
+     * @param page the zero-based page index
+     * @param size the page size
      * @return the doctors
      */
     @QueryMapping
-    public List<GraphQLDoctor> doctors() {
-        List<DoctorDto> page = doctorService.search(null, PageRequest.of(0, 100)).getContent();
-        return toGraphqlDoctors(page);
+    public List<GraphQLDoctor> doctors(@Argument Integer page, @Argument Integer size) {
+        int p = page == null ? 0 : page;
+        int s = size == null ? 100 : size;
+        List<DoctorDto> result = doctorService.search(null, PageRequest.of(p, s)).getContent();
+        return toGraphqlDoctors(result);
     }
 
     /**
-     * A single doctor by id; empty Optional when unknown.
+     * A single doctor by id; empty Optional when unknown. Slot windows are
+     * computed on the server (next 30 days), so no {@code from}/{@code to}
+     * arguments are needed.
      *
      * @param id the doctor id
-     * @param from optional window start for slots
-     * @param to optional window end for slots
      * @return the doctor, if present
      */
     @QueryMapping
-    public Optional<GraphQLDoctor> doctor(@Argument String id,
-                                          @Argument Instant from,
-                                          @Argument Instant to) {
+    public Optional<GraphQLDoctor> doctor(@Argument String id) {
         UUID doctorId;
         try {
             doctorId = UUID.fromString(id);

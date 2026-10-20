@@ -3,6 +3,7 @@ package com.amrutam.common;
 import com.amrutam.common.exception.ConflictException;
 import com.amrutam.common.idempotency.DefaultIdempotencyService;
 import com.amrutam.common.idempotency.IdempotencyOutcome;
+import com.amrutam.common.idempotency.IdempotencyResult;
 import com.amrutam.common.idempotency.IdempotencyRepository;
 import com.amrutam.common.idempotency.IdempotencyRepository.StoredKey;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -84,7 +85,7 @@ class DefaultIdempotencyServiceTest {
     @Test
     void firstCallRunsOperationAndPersistsResult() {
         IdempotencyOutcome outcome = service.apply(userId, "POST", "/api/v1/appointments", "hash1",
-                () -> new UserPayload(UUID.randomUUID(), "alice"));
+                () -> IdempotencyResult.of(new UserPayload(UUID.randomUUID(), "alice")));
 
         assertThat(outcome.replayed()).isFalse();
         StoredKey stored =
@@ -98,13 +99,13 @@ class DefaultIdempotencyServiceTest {
         int[] calls = {0};
 
         IdempotencyOutcome first = service.apply(userId, "POST", "/api/v1/appointments", "hash1",
-                () -> new UserPayload(UUID.randomUUID(), "alice"));
+                () -> IdempotencyResult.of(new UserPayload(UUID.randomUUID(), "alice")));
         assertThat(first.replayed()).isFalse();
 
         IdempotencyOutcome replayed = service.apply(userId, "POST", "/api/v1/appointments", "hash1",
                 () -> {
                     calls[0]++;
-                    return new UserPayload(UUID.randomUUID(), "bob");
+                    return IdempotencyResult.of(new UserPayload(UUID.randomUUID(), "bob"));
                 });
 
         assertThat(replayed.replayed()).isTrue();
@@ -122,7 +123,7 @@ class DefaultIdempotencyServiceTest {
         assertThatThrownBy(() -> service.apply(userId, "POST", "/x", "h",
                         () -> {
                             calls[0]++;
-                            return new UserPayload(UUID.randomUUID(), "z");
+                            return IdempotencyResult.of(new UserPayload(UUID.randomUUID(), "z"));
                         }))
                 .isInstanceOf(ConflictException.class);
         assertThat(calls[0]).isZero();
@@ -136,7 +137,7 @@ class DefaultIdempotencyServiceTest {
                 Instant.now().minus(java.time.Duration.ofMinutes(6))));
 
         IdempotencyOutcome outcome = service.apply(userId, "POST", "/y", "h2",
-                () -> new UserPayload(UUID.randomUUID(), "renamed"));
+                () -> IdempotencyResult.of(new UserPayload(UUID.randomUUID(), "renamed")));
 
         assertThat(outcome.replayed()).isFalse();
         StoredKey stored =

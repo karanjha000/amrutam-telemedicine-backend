@@ -1,8 +1,5 @@
 package com.amrutam.workers.jobs;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
@@ -30,23 +27,26 @@ class JdbcTemplateJobStoreTest {
 
     private static final String URL =
             "jdbc:h2:mem:jobstore_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;"
-                    + "DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1";
+                    + "DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1;NON_KEYWORDS=NOW";
 
     private static JdbcTemplate jdbc;
     private static JdbcTemplateJobStore store;
-    private static Statement ddl;
 
     @BeforeAll
     static void setUp() throws Exception {
-        Connection raw = DriverManager.getConnection(URL, "sa", "");
-        raw.createStatement().execute(
-                "CREATE ALIAS IF NOT EXISTS now FOR SYSTEM CURRENT_TIMESTAMP");
-        raw.close();
         DriverManagerDataSource ds = new DriverManagerDataSource();
         ds.setUrl(URL);
         ds.setUsername("sa");
         ds.setPassword("");
         jdbc = new JdbcTemplate(ds);
+        // The store's claim/complete SQL uses the PostgreSQL `now()` idiom,
+        // which H2 (even in PostgreSQL mode) does not provide. The H2 URL
+        // below therefore includes NON_KEYWORDS=NOW so that `now` is not
+        // treated as a reserved word and the alias below works; the alias
+        // itself is registered against a small test-only helper class.
+        try (var conn = ds.getConnection(); var st = conn.createStatement()) {
+            st.execute("CREATE ALIAS IF NOT EXISTS now FOR com.amrutam.workers.jobs.H2Functions.now");
+        }
         // Load + run the H2 DDL.
         var schema = new String(
                 JdbcTemplateJobStoreTest.class.getResourceAsStream("/schema-test.sql").readAllBytes());
@@ -116,7 +116,7 @@ class JdbcTemplateJobStoreTest {
         UUID id = UUID.randomUUID();
         jdbc.update(
                 "INSERT INTO async_jobs (id, type, status, payload, attempt, max_attempt, "
-                        + "scheduled_at, next_run_at) VALUES (?, ?, 'PENDING', ?, 0, 5, now(), now())",
+                        + "scheduled_at, next_run_at) VALUES (?, ?, 'PENDING', ?, 0, 5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
                 id, "test-type", "{\"a\":1}");
         return id;
     }

@@ -1,7 +1,7 @@
 package com.amrutam.api.util;
 
 import com.amrutam.common.security.AuthHeaderFilter;
-import com.amrutam.common.security.Claims;
+import com.amrutam.common.security.JwTokenService.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;
 

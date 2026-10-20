@@ -72,7 +72,7 @@ public class AuthHeaderFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-        Claims claims = validateOrNull(token);
+        JwTokenService.Claims claims = validateOrNull(token);
         if (claims != null) {
             request.setAttribute(AUTH_CLAIMS_ATTR, claims);
             request.setAttribute(AUTH_CLAIMS_ALIASED_ATTR, claims);
@@ -93,7 +93,7 @@ public class AuthHeaderFilter extends OncePerRequestFilter {
         return token.isEmpty() ? null : token;
     }
 
-    private Claims validateOrNull(String token) {
+    private JwTokenService.Claims validateOrNull(String token) {
         try {
             return jwTokenService.parseAndValidate(token);
         } catch (AmrutamException e) {
@@ -102,7 +102,7 @@ public class AuthHeaderFilter extends OncePerRequestFilter {
         }
     }
 
-    private static UsernamePasswordAuthenticationToken authenticationFor(Claims claims) {
+    private static UsernamePasswordAuthenticationToken authenticationFor(JwTokenService.Claims claims) {
         List<SimpleGrantedAuthority> authorities =
                 claims.roles().stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList());
         return UsernamePasswordAuthenticationToken.authenticated(

@@ -21,7 +21,7 @@ import java.util.UUID;
  * async / detached recorder would silently drop audit evidence when the
  * transaction rolls back — the wrong design for a compliance log).</p>
  *
- * <p>Also emits a JSON line on the {@code AUDIT} SLF4J logger, which
+ * <p>Also emits a JSON line on the {@code audit} SLF4J logger, which
  * {@code logback-spring.xml} routes to a dedicated rolling file so log
  * aggregators can ship the durable trail independently of the
  * {@code audit_logs} table.</p>
@@ -29,8 +29,8 @@ import java.util.UUID;
 @Component
 public class AuditRecorder {
 
-    /** The SLF4J logger name log aggregators route into the durable audit sink. */
-    private static final Logger AUDIT_LOG = LoggerFactory.getLogger("AUDIT");
+    /** The SLF4J logger name (lowercase {@code audit}) that logback routes to the audit file sink. */
+    private static final Logger AUDIT_LOG = LoggerFactory.getLogger("audit");
 
     private static final Logger log = LoggerFactory.getLogger(AuditRecorder.class);
 

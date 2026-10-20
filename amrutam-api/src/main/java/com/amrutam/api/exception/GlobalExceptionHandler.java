@@ -78,9 +78,9 @@ public class GlobalExceptionHandler {
         return error(ApiErrorCode.BAD_REQUEST, e.getMessage());
     }
 
-    /** 401 for JWT failures (expired / invalid signatures). */
-    @ExceptionHandler(JwtException.class)
-    public ResponseEntity<RestResponse<Void>> jwtFailed(JwtException e) {
+    /** 401 for failed credentials (login/MFA) and JWT failures. */
+    @ExceptionHandler({InvalidCredentialsException.class, JwtException.class})
+    public ResponseEntity<RestResponse<Void>> unauthorized(Exception e) {
         return error(ApiErrorCode.UNAUTHORIZED, e.getMessage());
     }
 

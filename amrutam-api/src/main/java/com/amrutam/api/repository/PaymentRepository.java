@@ -62,34 +62,37 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
      * Transition {@code PAYING -> CAPTURED} (exactly one winner).
      *
      * @param id payment id
+     * @param now timestamp for {@code updated_at}
      * @return rows affected
      */
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.transaction.annotation.Transactional
-    @Query("update Payment p set p.status = 'CAPTURED', p.updatedAt = now() "
+    @Query("update Payment p set p.status = 'CAPTURED', p.updatedAt = :now "
             + "where p.id = :id and p.status = 'PAYING'")
-    int captureIfPaying(@Param("id") UUID id);
+    int captureIfPaying(@Param("id") UUID id, @Param("now") Instant now);
 
     /**
      * Transition {@code CAPTURED -> REFUNDED}.
      *
      * @param id payment id
+     * @param now timestamp for {@code updated_at}
      * @return rows affected
      */
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.transaction.annotation.Transactional
-    @Query("update Payment p set p.status = 'REFUNDED', p.updatedAt = now() "
+    @Query("update Payment p set p.status = 'REFUNDED', p.updatedAt = :now "
             + "where p.id = :id and p.status = 'CAPTURED'")
-    int refundIfCaptured(@Param("id") UUID id);
+    int refundIfCaptured(@Param("id") UUID id, @Param("now") Instant now);
 
     /**
      * Transition to FAILED.
      *
      * @param id payment id
+     * @param now timestamp for {@code updated_at}
      * @return rows affected
      */
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.transaction.annotation.Transactional
-    @Query("update Payment p set p.status = 'FAILED', p.updatedAt = now() where p.id = :id")
-    int markFailed(@Param("id") UUID id);
+    @Query("update Payment p set p.status = 'FAILED', p.updatedAt = :now where p.id = :id")
+    int markFailed(@Param("id") UUID id, @Param("now") Instant now);
 }

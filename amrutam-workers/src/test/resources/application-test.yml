@@ -22,7 +22,7 @@ spring:
 amrutam:
   workers:
     enabled: true
-    poll-interval-ms: 1
+    poll-interval-ms: 60000
     saga-reconciliation-interval-ms: 60000
     backoff-base-seconds: 0
     backoff-max-seconds: 0

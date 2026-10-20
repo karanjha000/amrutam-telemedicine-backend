@@ -1,17 +1,27 @@
 package com.amrutam.workers.jobs;
 
-import java.time.Instant;
+import java.sql.SQLException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.sql.DataSource;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import com.amrutam.common.idempotency.IdempotencyRepository;
+import com.amrutam.workers.AmrutamWorkersApplication;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
@@ -23,11 +33,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * does NOT wait for the scheduler — it calls the public {@code poll()}
  * method directly so the run is deterministic.
  *
- * <p>{@code application-test.yml} sets backoff = 0 so retried jobs are due
- * immediately, and disables the audit Redis stream so no Redis connection is
- * required to boot the context.</p>
+ * <p>Boots the real Spring context under the {@code test} profile:
+ * {@link FlakyHandlerConfig} provides the H2 in-memory
+ * {@link DataSource} (mirroring {@code application-test.yml}), a
+ * {@code JdbcTemplate} that loads {@code schema-test.sql} explicitly (this
+ * context does not run Spring SQL init), and a no-op
+ * {@link IdempotencyRepository} stand-in so the shared
+ * {@code CommonAutoConfiguration} can autowire without pulling in
+ * amrutam-api. {@code application-test.yml} also disables the audit stream
+ * so no Redis connection is needed, and sets backoff to 0 so the retried
+ * job is due immediately. The flaky handler and its call counter are
+ * contributed by {@link FlakyHandlerConfig}.</p>
  */
-@SpringBootTest
+@SpringBootTest(classes = {AmrutamWorkersApplication.class, JobProcessorTest.FlakyHandlerConfig.class})
 @ActiveProfiles("test")
 @TestPropertySource("classpath:application-test.yml")
 class JobProcessorTest {
@@ -49,7 +67,7 @@ class JobProcessorTest {
         UUID id = UUID.randomUUID();
         jdbc.update(
                 "INSERT INTO async_jobs (id, type, status, payload, attempt, max_attempt, "
-                        + "scheduled_at, next_run_at) VALUES (?, ?, 'PENDING', ?, 0, 5, '2026-01-01 00:00:00', '2026-01-01 00:00:00')",
+                        + "scheduled_at, next_run_at) VALUES (?, ?, 'PENDING', ?, 0, 5, now(), now())",
                 id, "test.retry", "{\"n\":1}");
 
         processor.poll(); // 1st attempt -> fail, scheduled for retry
@@ -87,6 +105,66 @@ class JobProcessorTest {
         /** Shared call counter, autowired into the test for assertions. */
         public static class Calls {
             final AtomicInteger calls = new AtomicInteger(0);
+        }
+
+        /**
+         * H2 in-memory datasource mirroring application-test.yml;
+         * DB_CLOSE_DELAY=-1 keeps the named database alive for the JVM so
+         * every consumer of the shared JdbcTemplate sees one database.
+         */
+        @Bean
+        DataSource dataSource() {
+            DriverManagerDataSource ds = new DriverManagerDataSource();
+            ds.setUrl("jdbc:h2:mem:jobproc_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE"
+                    + ";DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1");
+            ds.setUsername("sa");
+            ds.setPassword("");
+            return ds;
+        }
+
+        /**
+         * JdbcTemplate bound to the shared datasource; loads
+         * schema-test.sql explicitly because this context does not run
+         * Spring SQL init (same DDL the non-Spring JdbcTemplateJobStoreTest
+         * uses).
+         */
+        @Bean
+        JdbcTemplate jdbcTemplate(DataSource dataSource) {
+            var template = new JdbcTemplate(dataSource);
+            try (var conn = dataSource.getConnection()) {
+                ScriptUtils.executeSqlScript(conn, new ClassPathResource("schema-test.sql"));
+            } catch (SQLException e) {
+                throw new IllegalStateException("could not load schema-test.sql", e);
+            }
+            return template;
+        }
+
+        /**
+         * No-op stand-in for the shared idempotency SPI — the api module
+         * owns the JPA-backed implementation; this test only needs the bean
+         * to satisfy CommonAutoConfiguration's autowiring.
+         */
+        @Bean
+        IdempotencyRepository idempotencyRepository() {
+            return new IdempotencyRepository() {
+                @Override
+                public void insertPending(UUID userId, String method, String path, String bodyHash) {
+                }
+
+                @Override
+                public Optional<StoredKey> findActive(UUID userId, String method, String path, String bodyHash) {
+                    return Optional.empty();
+                }
+
+                @Override
+                public void markCompleted(UUID userId, String method, String path,
+                        String bodyHash, String resultJson) {
+                }
+
+                @Override
+                public void markFailed(UUID userId, String method, String path, String bodyHash) {
+                }
+            };
         }
 
         @Bean

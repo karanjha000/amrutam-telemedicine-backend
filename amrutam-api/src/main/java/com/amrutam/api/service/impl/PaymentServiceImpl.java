@@ -94,7 +94,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentDto capture(UUID paymentId) {
-        int updated = payments.captureIfPaying(paymentId);
+        int updated = payments.captureIfPaying(paymentId, Instant.now());
         if (updated == 0) {
             Payment p = getEntity(paymentId);
             // Idempotent: already settled.
@@ -114,7 +114,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentDto refund(UUID paymentId) {
-        int updated = payments.refundIfCaptured(paymentId);
+        int updated = payments.refundIfCaptured(paymentId, Instant.now());
         if (updated == 0) {
             Payment p = getEntity(paymentId);
             // Idempotent: already refunded.

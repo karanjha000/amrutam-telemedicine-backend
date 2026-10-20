@@ -20,7 +20,7 @@ import java.util.List;
  * is not already present, so code that tags metrics explicitly is respected.</p>
  */
 @Configuration
-public class PrometheusConfig {
+public class ApiPrometheusConfig {
 
     /**
      * Meter filter merging the default service tags into every meter.

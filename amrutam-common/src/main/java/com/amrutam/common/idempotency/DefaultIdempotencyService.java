@@ -97,10 +97,9 @@ public class DefaultIdempotencyService implements IdempotencyService {
         return new FreshOutcome(result, resultJson);
     }
 
-    private String serialize(Object result) {
+    private String serialize(IdempotencyResult result) {
         try {
-            Object payload =
-                    result instanceof IdempotencyResult r ? r.payload() : result;
+            Object payload = result.payload();
             if (payload == null) {
                 return null;
             }

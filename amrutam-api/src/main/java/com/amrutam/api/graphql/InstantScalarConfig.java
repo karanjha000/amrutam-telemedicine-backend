@@ -22,7 +22,7 @@ public class InstantScalarConfig {
      */
     @Bean
     public GraphQLScalarType instantScalar() {
-        Coercing<java.time.Instant, java.time.Instant> coercion = new InstantCoercion();
+        Coercing<java.time.Instant, String> coercion = new InstantCoercion();
         // graphql-java 21: Coercing is a functional-ish interface? It declares
         // serialize + parseValue + parseLiteral, so we keep the concrete class.
         return GraphQLScalarType.newScalar()

@@ -16,7 +16,7 @@ import com.amrutam.api.repository.UserRepository;
 import com.amrutam.api.service.UserService;
 import com.amrutam.common.exception.ConflictException;
 import com.amrutam.common.exception.NotFoundException;
-import com.amrutam.common.security.Claims;
+import com.amrutam.common.security.JwTokenService.Claims;
 import com.amrutam.common.security.JwTokenService;
 import com.amrutam.common.security.JwtException;
 import com.amrutam.common.security.JwtProperties;

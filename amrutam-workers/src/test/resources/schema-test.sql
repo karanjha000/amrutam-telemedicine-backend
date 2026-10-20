@@ -19,8 +19,8 @@ CREATE TABLE availability_slots (
     status text NOT NULL,
     locked_by_id uuid,
     lock_expires_at timestamp WITH TIME ZONE,
-    created_at timestamp WITH TIME ZONE NOT NULL DEFAULT now(),
-    updated_at timestamp WITH TIME ZONE NOT NULL DEFAULT now()
+    created_at timestamp WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE consultations (
@@ -29,8 +29,8 @@ CREATE TABLE consultations (
     patient_id uuid NOT NULL,
     slot_id uuid,
     status text NOT NULL,
-    created_at timestamp WITH TIME ZONE NOT NULL DEFAULT now(),
-    updated_at timestamp WITH TIME ZONE NOT NULL DEFAULT now()
+    created_at timestamp WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE payments (
@@ -39,8 +39,8 @@ CREATE TABLE payments (
     amount numeric(10, 2) NOT NULL,
     currency text NOT NULL DEFAULT 'INR',
     status text NOT NULL,
-    created_at timestamp WITH TIME ZONE NOT NULL DEFAULT now(),
-    updated_at timestamp WITH TIME ZONE NOT NULL DEFAULT now()
+    created_at timestamp WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE async_jobs (
@@ -50,13 +50,13 @@ CREATE TABLE async_jobs (
     payload text,
     attempt integer NOT NULL DEFAULT 0,
     max_attempt integer NOT NULL DEFAULT 5,
-    scheduled_at timestamp WITH TIME ZONE NOT NULL DEFAULT now(),
+    scheduled_at timestamp WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_run_at timestamp WITH TIME ZONE,
     next_run_at timestamp WITH TIME ZONE,
     lease_owner text,
     lease_expiry timestamp WITH TIME ZONE,
-    created_at timestamp WITH TIME ZONE NOT NULL DEFAULT now(),
-    updated_at timestamp WITH TIME ZONE NOT NULL DEFAULT now()
+    created_at timestamp WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE audit_logs (

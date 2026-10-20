@@ -3,15 +3,20 @@ package com.amrutam.workers.saga;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+
+import com.amrutam.common.idempotency.IdempotencyRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -29,6 +34,40 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @ActiveProfiles("test")
 @TestPropertySource("classpath:application-test.yml")
 class BookingSagaOrchestratorTest {
+
+    @Configuration
+    static class TestConfig {
+
+        /**
+         * No-op stand-in for the shared idempotency SPI. The api module owns
+         * the JPA-backed implementation; the workers test context does not
+         * need one, so this satisfies CommonAutoConfiguration's autowiring
+         * without pulling in amrutam-api.
+         */
+        @Bean
+        IdempotencyRepository idempotencyRepository() {
+            return new IdempotencyRepository() {
+                @Override
+                public void insertPending(UUID userId, String method, String path, String bodyHash) {
+                }
+
+                @Override
+                public Optional<IdempotencyRepository.StoredKey> findActive(
+                        UUID userId, String method, String path, String bodyHash) {
+                    return Optional.empty();
+                }
+
+                @Override
+                public void markCompleted(UUID userId, String method, String path,
+                        String bodyHash, String resultJson) {
+                }
+
+                @Override
+                public void markFailed(UUID userId, String method, String path, String bodyHash) {
+                }
+            };
+        }
+    }
 
     @Autowired JdbcTemplate jdbc;
 

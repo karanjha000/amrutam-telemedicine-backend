@@ -13,7 +13,7 @@ import com.amrutam.common.exception.ApiErrorCode;
 import com.amrutam.common.exception.ErrorBody;
 import com.amrutam.common.exception.RestResponse;
 import com.amrutam.common.security.AuthHeaderFilter;
-import com.amrutam.common.security.Claims;
+import com.amrutam.common.security.JwTokenService.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

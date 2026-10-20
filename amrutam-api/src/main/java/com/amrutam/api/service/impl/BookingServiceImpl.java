@@ -137,7 +137,7 @@ public class BookingServiceImpl implements BookingService {
             bodyHash = IdempotencySupport.bodyHash(toCanonicalJson(request), salt);
         }
 
-        IdempotencyOutcome outcome = (IdempotencyOutcome) idempotency.apply(
+        IdempotencyOutcome outcome = idempotency.apply(
                 patientId, BOOKING_METHOD, BOOKING_PATH, bodyHash,
                 () -> IdempotencyResult.of(doBook(request, patientId)));
         if (outcome.replayed()) {
@@ -186,8 +186,7 @@ public class BookingServiceImpl implements BookingService {
 
             // 4) Create the payment (PAYING; amount resolved from the
             // doctor's consultation fee inside the payment service).
-            createdPayment = paymentService.createPayment(consultation, request.paymentToken(),
-                    request.paymentMethod());
+            createdPayment = paymentService.createPayment(consultation, null, request.paymentToken());
             asyncBridge.recordSagaStep(sagaId, 2, "create-payment", "DONE",
                     String.valueOf(createdPayment.id()));
 
@@ -203,7 +202,7 @@ public class BookingServiceImpl implements BookingService {
             // Compensation: payment FAILED, slot released, consultation
             // CANCELLED, saga step traced, then rethrow.
             if (createdPayment != null) {
-                paymentRepo.markFailed(createdPayment.id());
+                paymentRepo.markFailed(createdPayment.id(), Instant.now());
             }
             slots.unlockSlot(slot.getId());
             consultation.setStatus(ConsultationStatus.CANCELLED);
@@ -221,7 +220,8 @@ public class BookingServiceImpl implements BookingService {
                 AsyncJobRepository.JobType.CONSULTATION_SCHEDULED_NOTIFICATION,
                 Map.of("consultationId", consultation.getId().toString(),
                         "doctorId", request.doctorId().toString(),
-                        "scheduledAt", slot.getStartAt().toString()));
+                        "scheduledAt", slot.getStartAt().toString(),
+                        "patientId", patientId.toString()));
 
         log.info("Booked consultation={} slot={} patient={} payment={}",
                 consultation.getId(), slot.getId(), patientId, createdPayment.id());
@@ -295,7 +295,7 @@ public class BookingServiceImpl implements BookingService {
         paymentRepo.findByConsultationId(consultationId)
                 .ifPresent(p -> {
                     if (p.getStatus() == PaymentStatus.PAYING) {
-                        paymentRepo.markFailed(p.getId());
+                        paymentRepo.markFailed(p.getId(), Instant.now());
                     } else if (p.getStatus() == PaymentStatus.CAPTURED) {
                         log.info("Canceling consultation {} with a CAPTURED payment {} — "
                                 + "refund workflow is a follow-up", consultationId, p.getId());

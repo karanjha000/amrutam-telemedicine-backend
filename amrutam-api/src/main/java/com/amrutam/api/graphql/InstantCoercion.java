@@ -12,21 +12,33 @@ import java.util.Map;
  * GraphQL scalar coercion for the {@code Instant} custom scalar: ISO-8601
  * strings on the wire, {@link Instant} in the execution model.
  *
- * <p>Used via {@code GraphQLScalarType.newScalar()} in
- * {@link InstantScalarConfig} (both graphql-java classes are transitively on
- * the classpath through {@code spring-boot-starter-graphql}).</p>
+ * <p>The input type is {@link Instant} (resolver args are parsed to
+ * Instants) and the output type is {@link String} (serialised as ISO-8601),
+ * matching the {@code scalar Instant} schema declaration.</p>
  */
-public class InstantCoercion implements Coercing<Instant, Instant> {
+public class InstantCoercion implements Coercing<Instant, String> {
 
     /**
-     * Serializes an {@link Instant} for the wire.
+     * Serializes an {@link Instant} to its ISO-8601 string form for the wire.
      *
      * @param input the value
-     * @return the serialized form
-     * @throws CoercingSerializeException when the value is not representable
+     * @return the ISO-8601 form
+     * @throws CoercingSerializeException when the value is null
      */
-    public Instant serialize(Object input) throws CoercingSerializeException {
-        return asInstant(input, "serialize");
+    @Override
+    public String serialize(Object input) throws CoercingSerializeException {
+        if (input == null) {
+            return null;
+        }
+        if (input instanceof Instant i) {
+            return i.toString();
+        }
+        if (input instanceof String s) {
+            // Tolerate a pre-serialized string; validate it is parseable.
+            Instant.parse(s);
+            return s;
+        }
+        throw new CoercingSerializeException("Cannot serialize Instant from " + input);
     }
 
     /**
@@ -36,6 +48,7 @@ public class InstantCoercion implements Coercing<Instant, Instant> {
      * @return the parsed instant
      * @throws CoercingParseValueException when the value is not parseable
      */
+    @Override
     public Instant parseValue(Object input) throws CoercingParseValueException {
         try {
             return asInstant(input, "parseValue");
@@ -52,6 +65,7 @@ public class InstantCoercion implements Coercing<Instant, Instant> {
      * @return the parsed instant
      * @throws CoercingParseLiteralException when the value is not parseable
      */
+    @Override
     public Instant parseLiteral(Object input, Map<String, Object> environment)
             throws CoercingParseLiteralException {
         try {

@@ -3,20 +3,23 @@ package com.amrutam.api.exception;
 import com.amrutam.common.exception.AmrutamException;
 
 /**
- * Raised when authentication credentials are missing, malformed, or
- * rejected by the account (unknown user, wrong password, disabled
- * account, MFA not satisfied).
- *
- * <p>Mapped to HTTP 401 by {@link com.amrutam.api.exception.GlobalExceptionHandler}.</p>
+ * Signals a failed credential check (unknown user or bad password);
+ * maps to HTTP 401 via {@link GlobalExceptionHandler}.
  */
 public class InvalidCredentialsException extends AmrutamException {
 
     /**
-     * Creates the exception.
-     *
-     * @param message the human-readable message
+     * @param message human-readable message
      */
     public InvalidCredentialsException(String message) {
         super(message);
+    }
+
+    /**
+     * @param message human-readable message
+     * @param cause underlying cause
+     */
+    public InvalidCredentialsException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

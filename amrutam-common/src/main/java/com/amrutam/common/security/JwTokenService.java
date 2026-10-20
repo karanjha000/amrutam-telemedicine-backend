@@ -10,6 +10,18 @@ import java.util.UUID;
 public interface JwTokenService {
 
     /**
+     * The parsed claim set extracted from a validated token.
+     *
+     * @param userId the user id encoded in the token
+     * @param roles  the authority strings
+     * @param jwtId  the {@code jti} claim
+     * @param iat    issued-at (epoch seconds)
+     * @param exp    expiry (epoch seconds)
+     */
+    record Claims(UUID userId, List<String> roles, String jwtId, long iat, long exp) {
+    }
+
+    /**
      * Subject that gets encoded into the issued token.
      *
      * @param userId   the user id

@@ -62,10 +62,10 @@ management:
   endpoint:
     prometheus:
       enabled: true
-  endpoint:
     health:
       probes:
         enabled: true
+      show-details: always
   base-path: /actuator
 
 springdoc:
