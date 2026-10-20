@@ -1,0 +1,81 @@
+# Amrutam local development / reference deployment.
+#
+# The api and workers services use the SAME multi-role image (built from the
+# root Dockerfile) and differ only by AMRUTAM_ROLE + role-specific env.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: amrutam
+      POSTGRES_USER: amrutam
+      POSTGRES_PASSWORD: amrutam
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U amrutam -d amrutam"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: amrutam:local
+    environment:
+      AMRUTAM_ROLE: api
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: amrutam
+      DB_USER: amrutam
+      DB_PASSWORD: amrutam
+      REDIS_HOST: redis
+      # Dev-only placeholder; set a real secret in any real deployment.
+      JWT_SECRET: amrutam-dev-hmac-secret-change-me-0123456789abcdef
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  workers:
+    image: amrutam:local
+    # Same multi-role image; the entrypoint runs /app/workers.jar.
+    environment:
+      AMRUTAM_ROLE: workers
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: amrutam
+      DB_USER: amrutam
+      DB_PASSWORD: amrutam
+      REDIS_HOST: redis
+      AMRUTAM_WORKERS_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+
+networks:
+  default:
+    driver: bridge
