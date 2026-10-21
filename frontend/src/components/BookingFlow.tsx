@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { api, ApiError } from '../lib/api';
 import type { BookingResult, Doctor, Page, Slot } from '../types';
 import { ErrorNote, fmtDateTime, fmtMoney, Spinner } from './ui';
@@ -31,7 +31,7 @@ interface BookingFlowProps {
  * children, which would block the click on a slot radio the moment the
  * previous step became active.
  */
-export function BookingFlow({ onBooked, doctors }: BookingFlowProps): ReactNode {
+export function BookingFlow({ onBooked, doctors }: BookingFlowProps): JSX.Element {
   const [doctorsLoaded, setDoctorsLoaded] = useState<Doctor[] | null>(null);
   const [doctorsError, setDoctorsError] = useState<string | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);

@@ -18,7 +18,6 @@ import {
   type ReactNode
 } from 'react';
 import { api, ApiError, jwtStore } from '../lib/api';
-import { ROLE_PREFIX } from '../types';
 import type {
   LoginInput,
   LoginResult,
@@ -29,7 +28,7 @@ import type {
   User
 } from '../types';
 
-export const roleAuthority: Record<Role, string> = ROLE_PREFIX;
+
 
 interface MfaPending {
   username: string;

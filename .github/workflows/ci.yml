@@ -20,10 +20,10 @@ jobs:
           cache: 'maven'
 
       - name: Install (skip tests)
-        run: mvn -B -ntp clean install -DskipTests
+        run: mvn -B -ntp -f backend/pom.xml clean install -DskipTests
 
       - name: Run tests
-        run: mvn -B -ntp test
+        run: mvn -B -ntp -f backend/pom.xml test
 
       - name: Upload test reports
         if: failure()

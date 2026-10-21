@@ -22,8 +22,8 @@ public interface DoctorRepository extends JpaRepository<Doctor, UUID> {
      * @param pageable paging
      * @return matching page
      */
-    @Query("select d from Doctor d where lower(d.specialization) like %lower(:q) "
-            + "or lower(d.bio) like %lower(:q)")
+    @Query("select d from Doctor d where lower(d.specialization) like lower(concat('%', :q, '%')) "
+            + "or lower(d.bio) like lower(concat('%', :q, '%'))")
     Page<Doctor> searchDoctors(@Param("q") String q, Pageable pageable);
 
     /**

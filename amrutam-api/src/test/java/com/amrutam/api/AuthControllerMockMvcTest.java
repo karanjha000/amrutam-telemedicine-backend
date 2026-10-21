@@ -10,6 +10,7 @@ import com.amrutam.api.util.CurrentClaims;
 import com.amrutam.common.config.CommonAutoConfiguration;
 import com.amrutam.common.security.JwTokenService;
 import com.amrutam.common.security.JwtProperties;
+import com.amrutam.common.security.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -38,7 +39,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(controllers = {AuthController.class})
 @ActiveProfiles("test")
-@Import({ApiSecurityConfig.class,
+@Import({SecurityConfig.class,
+        ApiSecurityConfig.class,
         CommonAutoConfiguration.class,
         GlobalExceptionHandler.class,
         CurrentClaims.class,

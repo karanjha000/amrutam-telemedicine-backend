@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from '../lib/api';
 import type { Doctor, Page, Slot, SlotCreateInput } from '../types';
 import { ErrorNote, fmtDateTime, Spinner, StatusBadge } from './ui';
@@ -9,7 +9,7 @@ import { ErrorNote, fmtDateTime, Spinner, StatusBadge } from './ui';
  * windows) and listing; the backend has no slot DELETE/CANCEL endpoint in
  * this scope, so the UI supports adding slots and shows the full window.
  */
-export function SlotsManager({ doctor }: { doctor: Doctor }): ReactNode {
+export function SlotsManager({ doctor }: { doctor: Doctor }): JSX.Element {
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);

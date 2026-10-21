@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { DailyConsultationsChart } from '../components/DailyConsultationsChart';
 import { ErrorNote, fmtMoney, Spinner, SectionCard } from '../components/ui';
@@ -25,7 +25,7 @@ function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export default function AdminDashboard(): ReactNode {
+export default function AdminDashboard() {
   const [date, setDate] = useState<string>(todayIso());
   const [daily, setDaily] = useState<DailyConsultations | null>(null);
   const [dailyError, setDailyError] = useState<string | null>(null);

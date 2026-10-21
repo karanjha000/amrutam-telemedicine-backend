@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
+
 import { useAuth, hasRole } from '../context/AuthContext';
 import type { Role } from '../types';
 
@@ -14,7 +15,7 @@ interface ProtectedRouteProps {
  * still restoring), the visitor is sent to /login with a `from` state so
  * the post-login redirect lands back on the protected page.
  */
-export function ProtectedRoute({ allow, children }: ProtectedRouteProps): ReactNode {
+export function ProtectedRoute({ allow, children }: ProtectedRouteProps): JSX.Element {
   const { user, ready } = useAuth();
   const location = useLocation();
 

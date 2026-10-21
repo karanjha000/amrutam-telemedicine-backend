@@ -3,6 +3,7 @@ package com.amrutam.common.security;
 import com.amrutam.common.exception.ApiErrorCode;
 import com.amrutam.common.exception.ErrorBody;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -88,6 +89,7 @@ public class SecurityConfig {
      * @return a BCrypt encoder
      */
     @Bean
+    @ConditionalOnMissingBean(PasswordEncoder.class)
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }

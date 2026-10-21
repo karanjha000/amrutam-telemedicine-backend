@@ -1,10 +1,10 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../lib/api';
 import type { PatientDto } from '../types';
 
-export default function RegisterPage(): ReactNode {
+export default function RegisterPage(): JSX.Element {
   const { register } = useAuth();
   const navigate = useNavigate();
 

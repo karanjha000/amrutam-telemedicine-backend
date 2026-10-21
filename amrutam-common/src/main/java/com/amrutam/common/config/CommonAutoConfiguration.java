@@ -9,6 +9,7 @@ import com.amrutam.common.security.JwTokenService;
 import com.amrutam.common.security.JwtProperties;
 import com.amrutam.common.security.JwtTokenService;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -56,6 +57,7 @@ public class CommonAutoConfiguration {
      * @return the service
      */
     @Bean
+    @ConditionalOnBean(IdempotencyRepository.class)
     @ConditionalOnMissingBean
     public DefaultIdempotencyService defaultIdempotencyService(
             ObjectMapper objectMapper, IdempotencyRepository repository) {

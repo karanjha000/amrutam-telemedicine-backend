@@ -2,7 +2,7 @@ spring:
   application:
     name: amrutam-api
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:amrutam}
+    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:amrutam}
     username: ${DB_USER:amrutam}
     password: ${DB_PASSWORD:amrutam}
     hikari:
@@ -26,7 +26,7 @@ spring:
       continue-on-error: true
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
+      host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
       timeout: 2s
   graphql:
@@ -75,5 +75,8 @@ springdoc:
     path: /swagger-ui.html
 
 logging:
+  file:
+    path: logs
+    name: amrutam-api.log
   level:
     com.amrutam: INFO

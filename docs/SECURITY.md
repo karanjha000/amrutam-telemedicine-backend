@@ -1,62 +1,73 @@
-# Amrutam Security
+# 🛡️ Amrutam Security
 
-Threat model, OWASP Top-10 mapping, key rotation, and MFA notes.
+> Threat model · OWASP Top-10 mapping · key rotation · MFA notes
 
-## 1. Threat model
+**Contents:** [1 Threat model](#1--threat-model) · [2 OWASP](#2--owasp-top-10-mapping) · [3 Encryption](#3--encryption-at-rest--in-transit) · [4 Key rotation](#4--key-rotation-jwt-hmac-secret) · [5 MFA](#5--mfa--totp)
+
+## 🧅 Defence in depth
+
+```mermaid
+flowchart LR
+    R["Request"] --> RL["🚦 Rate limit<br/>token bucket"] --> JW["🪪 JWT validation<br/>15-min TTL"] --> RB["🎭 Role check<br/>@PreAuthorize"] --> OW["🧍 Ownership check<br/>service layer"] --> ID["🔁 Idempotency"] --> DB[("💾 Data")]
+    DB --> AU["📝 Audit trail"]
+```
+
+## 1. 🎯 Threat model
 
 | Asset | Threat | Mitigation |
 | --- | --- | --- |
-| Patient data (consultations, prescriptions, payments) | Unauthenticated access | JWT bearer auth (15-min TTL); /api/v1/** requires a valid token; /me 401s without one |
-|  | IDOR (reading another user's consultation) | @PreAuthorize role checks + ownership checks in services (ConsultationsController/BookingService verify patientId/doctorId against the validated claim userId, never a spoofable principal name) |
-|  | Duplicate billing | Idempotency: (userId, method, path, bodyHash) natural key; payments.idempotency_key unique; an explicit X-Idempotency-Key header replaces the body hash so replays are stable |
-| Doctor availability | Double-booking a slot | Atomic UPDATE ... WHERE status='AVAILABLE' (exactly one winner); 409 on race; 15-min lock window; workers' BookingSagaOrchestrator reconciles stuck PENDING_PAYMENT rows |
-| Platform (admin analytics) | Privilege escalation | ROLE_ADMIN-gated @PreAuthorize("hasRole('ADMIN')") on /api/v1/admin/**; separate OpenAPI "admin" group |
-| Secrets (JWT HMAC secret) | Secret reuse / leakage | Dev placeholder only; prod requires JWT_SECRET env var; two-secret overlap rotation (below); 15-min TTL limits blast radius |
-| Integrity of audit trail | Tampering | audit_logs written via dedicated AUDIT logback appender (rolling file, 30-day retention) and by the workers' AuditWorker draining the Redis audit stream |
+| Patient data | Unauthenticated access | JWT bearer auth (15-min TTL); `/api/v1/**` needs a valid token; `/me` returns 401 without one |
+| Patient data | IDOR (reading another user's consultation) | `@PreAuthorize` + service ownership checks against the validated claim `userId`, never a spoofable principal name |
+| Payments | Duplicate billing | Idempotency natural key `(userId, method, path, bodyHash)`; unique `payments.idempotency_key`; `X-Idempotency-Key` header makes replays stable |
+| Doctor availability | Double-booking | Atomic `UPDATE … WHERE status='AVAILABLE'` (one winner); 409 on race; 15-min lock; saga reconciler cleans stuck rows |
+| Admin analytics | Privilege escalation | `hasRole('ADMIN')` on `/api/v1/admin/**`; separate OpenAPI "admin" group |
+| JWT secret | Reuse / leakage | Dev placeholder only; prod requires `JWT_SECRET`; two-secret overlap rotation; short TTL limits blast radius |
+| Audit trail | Tampering | Dedicated AUDIT logback appender (rolling file, 30-day retention) + `AuditWorker` draining the Redis audit stream |
 
-## 2. OWASP Top-10 mapping
+## 2. 🔟 OWASP Top-10 mapping
 
-| Category | Mitigation in code |
+| ID | Category | Mitigation in code |
+| --- | --- | --- |
+| A01 | Broken Access Control | `@PreAuthorize`, service ownership checks, role-gated admin endpoints |
+| A02 | Cryptographic Failures | BCrypt passwords; HMAC-SHA256 JWT (auth0 java-jwt); no plaintext PII in logs; AES at-rest field encryption noted for future |
+| A03 | Injection | JPA parameterized queries; workers use bind variables; no string-built SQL |
+| A04 | Insecure Design | Saga with explicit compensation matrix; exactly-once slot lock; documented idempotency semantics |
+| A05 | Security Misconfiguration | Stateless JWT; CSRF deliberately disabled (bearer auth); prod: forward-headers framework, minimal actuator (health + prometheus), INFO logging |
+| A06 | Vulnerable Components | OWASP dependency-check in CI; pinned BOM versions; quarterly re-scan |
+| A07 | Auth Failures | 15-min TTL + refresh; MFA (TOTP) in login flow; disabled accounts rejected |
+| A08 | Software and Data Integrity | Idempotency + `saga_steps` trace; workers reconcile stuck sagas |
+| A09 | Logging Failures | MDC `traceId` on every response and log line; AUDIT appender; durable `audit_logs` table |
+| A10 | SSRF / XXE | No user-controlled outbound URLs; JSON-only API |
+
+**Additional:** 🚦 `RateLimitFilter` per-endpoint token bucket (`amrutam.ratelimit.default-qps/burst` + overrides) · 🔒 gateway tokens held only in memory during the request · payment idempotency keys are opaque.
+
+## 3. 🔒 Encryption at rest / in transit
+
+| Scope | Status |
 | --- | --- |
-| A01 Broken Access Control | @PreAuthorize method security (common SecurityConfig enables it); service-level ownership checks for IDOR; admin endpoints role-gated |
-| A02 Cryptographic Failures | BCrypt for password hashes; HMAC-SHA256 JWT (auth0 java-jwt); AES note for future at-rest field encryption; no plaintext PII in logs (audit details are operator-controlled) |
-| A03 Injection | All persistence via JPA parameterized queries / @Query named params; workers use JdbcTemplate with bind variables; no string-built SQL |
-| A04 Insecure Design | Booking saga with explicit compensation matrix (docs/ARCHITECTURE.md §4.2); exactly-once slot lock; idempotency key semantics documented |
-| A05 Security Misconfiguration | Stateless JWT (no session fixation); CSRF disabled deliberately (stateless bearer auth); prod profile: forward-headers-strategy framework, minimal actuator exposure (health+prometheus), logging INFO |
-| A06 Vulnerable Components | OWASP dependency-check in CI (security-scan job); dependency versions pinned in the parent BOM; quarterly re-scan |
-| A07 Auth Failures | JWT 15-min TTL + refresh endpoint; MFA (TOTP) first-class in the login flow; disabled accounts rejected |
-| A08 Software & Data Integrity | Idempotency + saga_steps trace; workers reconcile stuck sagas |
-| A09 Logging Failures | MDC traceId on every response envelope + log line; AUDIT appender to a rolling file; audit_logs table for durable trail |
-| A10 SSRF / XXE | No user-controlled outbound URLs in this scope; JSON-only API (XSS not applicable to a JSON API; no HTML rendering) |
+| In transit | TLS terminated at the platform proxy; prod sets `server.forward-headers-strategy: framework` |
+| Postgres at rest | Use `sslmode=require` in prod (documented, **not yet enforced**) |
+| Redis | Should run behind TLS in prod |
 
-Additional:
-- DoS: RateLimitFilter (common kernel) per-endpoint token bucket
-  (amrutam.ratelimit.default-qps/burst + overrides).
-- Sensitive data exposure: passwords BCrypt-hashed; gateway tokens held only
-  in memory during the request; payment idempotency keys are opaque.
+## 4. 🔑 Key rotation (JWT HMAC secret)
 
-## 3. Encryption at rest / in transit
+```mermaid
+sequenceDiagram
+    participant Ops
+    participant App
+    Note over App: Phase 1 · only current secret
+    Ops->>App: set legacy-secret = old, secret = new
+    Note over App: Phase 2 · overlap, verifier checks both
+    App-->>App: new logins signed with new secret
+    Note over App: Phase 3 · old tokens expire (max 15 min)
+    Ops->>App: remove legacy-secret
+```
 
-- In transit: TLS termination at the platform proxy; prod sets
-  server.forward-headers-strategy: framework so X-Forwarded-* is honored.
-- At rest: PostgreSQL connection string should use sslmode=require in prod
-  (documented, not enforced by this module yet). Redis should run behind
-  TLS in prod.
+Config: `amrutam.jwt.secret` (current) and `amrutam.jwt.legacy-secret` (previous). Existing tokens stay valid until expiry; the 15-min TTL plus refresh endpoint keep the window short.
 
-## 4. Key rotation (JWT HMAC secret)
+## 5. 📲 MFA / TOTP
 
-- Rotation is a two-secret overlap: keep the current secret in
-  amrutam.jwt.secret and the previous one in amrutam.jwt.legacy-secret
-  (documented convention; the verifier checks both during the overlap
-  window). Re-issue strategy: existing tokens remain valid until they
-  expire (15-min TTL bounds the window); new logins use the new secret.
-- 15-min TTL + the refresh endpoint keep the rotation window short.
+- When `users.mfa_enabled` is `TRUE`, `/auth/login` returns an `MfaChallengeDto` (secret + `otpauth://` URI) instead of a token; `/auth/mfa/verify` then issues the token.
 
-## 5. MFA / TOTP
-
-- Login flow: when users.mfa_enabled is TRUE, /auth/login returns an
-  MfaChallengeDto (secret + otpauth:// provisioning URI) instead of a
-  token; /auth/mfa/verify then issues the token.
-- Status: the TOTP verification is a STUB (accepts any well-formed 6-digit
-  code) until the RFC 6238 integration lands; the secret column and
-  provisioning URI are already wired. Track as a follow-up.
+> [!CAUTION]
+> **Status: STUB.** TOTP verification currently accepts any well-formed 6-digit code until the RFC 6238 integration lands. The secret column and provisioning URI are already wired. Do not rely on MFA in production until this follow-up is done.

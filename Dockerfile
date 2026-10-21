@@ -9,18 +9,19 @@
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# Stage 1: build all three Maven modules
+# Stage 1: build all three Maven modules from the canonical backend reactor
 # ---------------------------------------------------------------------------
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 ARG MAVEN_OPTS="-Xmx1g"
 WORKDIR /build
 
-# Copy the whole reactor (root pom + all modules) so a single build covers
-# common -> workers -> api.
-COPY pom.xml ./
-COPY amrutam-common amrutam-common
-COPY amrutam-workers amrutam-workers
-COPY amrutam-api amrutam-api
+# The source of truth for the backend reactor lives under backend/, not at the
+# repository root. Copy the parent POM and all module sources so a single build
+# covers common -> workers -> api.
+COPY backend/pom.xml ./pom.xml
+COPY backend/amrutam-common backend/amrutam-common
+COPY backend/amrutam-workers backend/amrutam-workers
+COPY backend/amrutam-api backend/amrutam-api
 
 # Install all modules (api and workers produce re-packaged boot jars; common
 # is a plain jar). Skip tests in the image build; CI runs them separately.
@@ -34,8 +35,8 @@ WORKDIR /app
 
 # Both re-packaged Spring Boot jars (only api and workers use the
 # spring-boot-maven-plugin; common is a plain jar).
-COPY --from=build /build/amrutam-api/target/amrutam-api-*.jar  /app/api.jar
-COPY --from=build /build/amrutam-workers/target/amrutam-workers-*.jar /app/workers.jar
+COPY --from=build /build/backend/amrutam-api/target/amrutam-api-*.jar  /app/api.jar
+COPY --from=build /build/backend/amrutam-workers/target/amrutam-workers-*.jar /app/workers.jar
 
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh

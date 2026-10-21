@@ -1,221 +1,200 @@
-# Amrutam Architecture
+# 🧩 Amrutam Architecture (Deep Dive)
 
-Module map, data flow, booking saga, ER model, async/worker boundary,
-caching, partitioning and DR notes for the Amrutam telemedicine platform.
+> Module map · data flow · booking saga · ER model · async workers · caching · partitioning · disaster recovery
 
-## 1. Overview
+**Contents:** [1 Overview](#1--overview) · [2 Boundaries](#2--module-boundaries) · [3 Data flow](#3--data-flow) · [4 Booking saga](#4--booking-saga) · [5 ER diagram](#5--er-diagram) · [6 Async jobs](#6--async-jobs) · [7 Caching](#7--caching) · [8 Partitioning](#8--partitioning) · [9 DR](#9--dr--backup)
 
-Amrutam is a Java 21 / Spring Boot 3.3.x telemedicine backend composed of
-three Maven modules plus shared infrastructure (PostgreSQL 16 + Redis 7):
+---
+
+## 1. 🔭 Overview
+
+Amrutam is a Java 21 / Spring Boot 3.3.x telemedicine backend: three Maven modules plus shared infrastructure (PostgreSQL 16 + Redis 7).
 
 | Module | Responsibility | Owns |
 | --- | --- | --- |
-| amrutam-common | Shared kernel: security (JWT filter, JwTokenService, Claims), exceptions, idempotency SPI + default impl, rate limiting, audit SPI, MDC trace-id | No tables; pure SPIs + beans |
-| amrutam-api | REST + GraphQL surface; booking saga; JPA persistence for ALL domain entities | All entity + repository classes, schema.sql, data.sql, async_jobs/saga_steps producers |
-| amrutam-workers | Background: job poller (async_jobs), saga reconciliation, notification fan-out, audit stream consumer | No JPA entities; raw JdbcTemplate SQL only |
+| 🧱 `amrutam-common` | Shared kernel: JWT filter, `JwTokenService`, claims, exceptions, idempotency SPI, rate limiting, audit SPI, MDC trace-id | No tables, only SPIs and beans |
+| ⚙️ `amrutam-api` | REST + GraphQL surface, booking saga, JPA persistence | **All** entities and repositories, `schema.sql`, `data.sql`, `async_jobs` / `saga_steps` producers |
+| 🔄 `amrutam-workers` | Job poller, saga reconciliation, notification fan-out, audit stream consumer | No entities, raw `JdbcTemplate` SQL only |
 
-The module dependency graph is strictly acyclic: api depends on common;
-workers depends on common; api depends on workers (the api reads
-worker-produced rows through its own JPA entities, never through a
-compile-time import of worker classes).
+```mermaid
+flowchart BT
+    API["⚙️ amrutam-api"] --> COM["🧱 amrutam-common"]
+    WRK["🔄 amrutam-workers"] --> COM
+    API -. "reads worker-written rows<br/>via its own JPA entities" .-> WRK
+```
 
-## 2. Module boundaries and the shared-JPA ownership rule
+> [!NOTE]
+> The dotted edge is a **data** relationship only. The API never has a compile-time import of worker classes, so the module graph stays acyclic.
 
-Single source of truth for the schema lives in amrutam-api. Every JPA
-entity and Spring Data repository - including the worker-facing
-async_jobs, saga_steps and audit_logs tables - is declared under
-amrutam-api/src/main/java/com/amrutam/api/entity and .../repository.
+## 2. 🧱 Module boundaries
 
-Consequences:
+Single source of truth for the schema lives in `amrutam-api`. Every entity and repository, including worker-facing `async_jobs`, `saga_steps` and `audit_logs`, is declared under `amrutam-api/src/main/java/com/amrutam/api/{entity,repository}`.
 
-- amrutam-workers owns NO JPA entity and NO Spring Data repository. It
-  reaches the database with parameterized JdbcTemplate SQL against the
-  same tables (see JdbcTemplateJobStore, AuditLogWriter).
-- The workers module never imports com.amrutam.api.** classes.
-- Because both processes share one datasource, schema changes are made
-  once, in the api module's schema.sql / JPA model, and redeployed to both.
-- If a worker feature needs a new table, add the DDL + entity to
-  amrutam-api first, then reference it by plain SQL from workers.
+```text
+amrutam-api
+└── src/main/java/com/amrutam/api
+    ├── entity/        ✅ ALL JPA entities live here
+    └── repository/    ✅ ALL Spring Data repositories live here
 
-## 3. Data flow
+amrutam-workers
+└── (no entity/, no repository/)   ❌ never imports com.amrutam.api.**
+    ├── JdbcTemplateJobStore       parameterized SQL
+    └── AuditLogWriter             parameterized SQL
+```
 
-        Browser / Mobile
-        (JWT bearer)
-              |
-              v
-        +--------------------------------+
-        |           amrutam-api          |
-        |  AuthHeaderFilter ->          |
-        |  SecurityConfig /             |
-        |  @PreAuthorize                |
-        +------+--------------+---------+
-               |              |
-               | REST/GraphQL | Booking saga
-               |              | IdempotencyService (common)
-               v              v
-        +-----------------------------------------------+
-        |              PostgreSQL 16                    |
-        | users, doctors, availability_slots,           |
-        | consultations, payments, prescriptions,       |
-        | audit_logs, idempotency_keys, saga_steps,     |
-        | async_jobs                                     |
-        +-------+----------------------+----------------+
-                |                      |
-   JdbcTemplate |   PENDING rows       |
-        SQL      v                      v
-        +-----------------------------------------------+
-        |            amrutam-workers                    |
-        |  JobProcessor -> JobHandler (notify)          |
-        |  BookingSagaOrchestrator (reconcile)          |
-        |  AuditWorker (Redis stream -> audit_logs)     |
-        +-----------------------------------------------+
-                ^
-                | Redis 7: audit stream, notification
-                | sink, cache
-                |
+**Consequences**
 
-## 4. Booking saga
+- Workers reach the DB with parameterized `JdbcTemplate` SQL against the same tables.
+- Both processes share one datasource, so schema changes are made once in `schema.sql` / the JPA model and redeployed to both.
+- A new worker table means: DDL + entity in the API first, then plain SQL from workers.
+
+## 3. 🌊 Data flow
+
+```mermaid
+flowchart TD
+    CL["📱 Browser / Mobile<br/>JWT bearer"] --> F["AuthHeaderFilter"]
+    F --> SC["SecurityConfig + @PreAuthorize"]
+    SC --> API["⚙️ amrutam-api<br/>REST / GraphQL"]
+    API --> IDEM["IdempotencyService (common)"]
+    API --> SAGA["Booking saga"]
+    IDEM --> PG
+    SAGA --> PG[("🐘 PostgreSQL 16<br/>users, doctors, availability_slots,<br/>consultations, payments, prescriptions,<br/>audit_logs, idempotency_keys,<br/>saga_steps, async_jobs")]
+    PG -- "PENDING rows via JdbcTemplate" --> WK
+    subgraph WK["🔄 amrutam-workers"]
+        JP["JobProcessor → JobHandler (notify)"]
+        BO["BookingSagaOrchestrator (reconcile)"]
+        AW["AuditWorker (stream → audit_logs)"]
+    end
+    RD[("⚡ Redis 7<br/>audit stream · notification sink · cache")] <--> API
+    RD <--> WK
+```
+
+## 4. 💳 Booking saga
 
 ### 4.1 Sequence
 
-        Client                     amrutam-api (BookingService)     PostgreSQL     AsyncBridge
-           |  POST /consultations/booking                                |             |
-           |------------------------------------------------------------->|            |
-           |                                     1 load slot (404/409)  |             |
-           |                                     2 insert consultation   |             |
-           |                                       PENDING_PAYMENT       |             |
-           |                                     3 lock slot             |             |
-           |                                       AVAILABLE->LOCKED     |             |
-           |                                       (409 on race)         |             |
-           |                                     4 insert payment PAYING |             |
-           |                                       (dedupe by key)       |             |
-           |                                     5 capture PAYING->      |             |
-           |                                       CAPTURED, consult PAID|            |
-           |                                     6 enqueue async job ----+--> PENDING  |
-           |                                     + saga_steps rows       |             |
-           |<- 201 {consultationId, slotId, paymentId, status} ---------|             |
-           |                                                            |             |
-        amrutam-workers (later poll):
-           |                                     claim PENDING job (lease, attempt++)
-           |                                     run JobHandler; complete/retry/dead
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Client
+    participant B as BookingService (api)
+    participant DB as PostgreSQL
+    participant W as Workers
+    C->>B: POST /consultations/booking
+    B->>DB: load slot (404 unknown / 409 not AVAILABLE)
+    B->>DB: insert consultation = PENDING_PAYMENT
+    B->>DB: lock slot AVAILABLE → LOCKED (409 on race)
+    B->>DB: insert payment = PAYING (dedupe by key)
+    B->>DB: capture PAYING → CAPTURED, consultation → PAID
+    B->>DB: enqueue async job (REQUIRES_NEW) + saga_steps
+    B-->>C: 201 {consultationId, slotId, paymentId, status}
+    Note over W,DB: later, asynchronously
+    W->>DB: claim PENDING job (lease, attempt++)
+    W->>W: run JobHandler
+    W->>DB: DONE / retry / DEAD
+```
 
-Numbered steps:
+| # | Step | Detail |
+| --- | --- | --- |
+| 1 | Load slot | `404` unknown, `409` not `AVAILABLE` |
+| 2 | Create consultation | Status `PENDING_PAYMENT`, `scheduledAt = slot.startAt` |
+| 3 | Lock slot | Atomic `UPDATE … WHERE status='AVAILABLE'`; 0 rows means a competing booking won, so `ConflictException` (409) |
+| 4 | Create payment | Status `PAYING`; duplicate idempotency key returns the existing payment, no second charge |
+| 5 | Capture | `PAYING → CAPTURED` (simulated gateway); consultation becomes `PAID`; on failure, compensation runs in the same transaction |
+| 6 | Enqueue | `consultation.scheduled-notification` job written via `REQUIRES_NEW` (durable even if the outer transaction rolls back), plus `saga_steps` rows |
 
-1. Load slot - 404 when unknown, 409 when not AVAILABLE.
-2. Create consultation - status PENDING_PAYMENT, scheduledAt = slot.startAt.
-3. Lock slot - atomic UPDATE ... WHERE status='AVAILABLE'; 0 rows means a
-   competing booking won, so a ConflictException (HTTP 409) is raised.
-4. Create payment - status PAYING; a duplicate idempotency key returns the
-   existing payment instead of a second charge.
-5. Capture - PAYING -> CAPTURED (simulated gateway in this scope); the
-   consultation becomes PAID. On failure, compensation runs in the same
-   transaction.
-6. Enqueue - a consultation.scheduled-notification job is written to
-   async_jobs via a REQUIRES_NEW transaction (durable even if the outer
-   transaction rolls back), plus saga_steps rows for the trace.
+### 4.2 Consultation state machine
 
-### 4.2 Compensation matrix
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING_PAYMENT
+    PENDING_PAYMENT --> PAID: payment captured
+    PENDING_PAYMENT --> CANCELLED: capture failed / stuck (reconciled)
+    PAID --> COMPLETED: doctor marks done
+    PAID --> NO_SHOW
+    PAID --> CANCELLED
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    NO_SHOW --> [*]
+```
+
+### 4.3 Compensation matrix
 
 | Failed step | Compensation (reverse order) |
 | --- | --- |
-| 5 capture fails | payments.markFailed + slots.unlockSlot + consultation CANCELLED + saga step "compensation" |
-| 4 payment insert fails | nothing created yet; outer transaction rolls back |
-| 3 lock race | ConflictException (409); consultation rolls back |
-| 1 slot missing | NotFoundException (404) |
+| 5 · capture fails | `payments.markFailed` → `slots.unlockSlot` → consultation `CANCELLED` → saga step "compensation" |
+| 4 · payment insert fails | Nothing created yet; outer transaction rolls back |
+| 3 · lock race | `ConflictException` (409); consultation rolls back |
+| 1 · slot missing | `NotFoundException` (404) |
 
-A PENDING_PAYMENT consultation that never reaches PAID (crash between
-steps 4 and 5) is picked up by the workers' BookingSagaOrchestrator, which
-releases the slot and cancels it - the out-of-band backstop.
+> [!WARNING]
+> A `PENDING_PAYMENT` consultation that never reaches `PAID` (crash between steps 4 and 5) is picked up by the workers' `BookingSagaOrchestrator`, which releases the slot and cancels it. This is the out-of-band backstop.
 
-## 5. ER diagram
+## 5. 🗂️ ER diagram
 
-        users ||--o| user_profiles : has
-        users ||--o| doctors       : backs
-        doctors ||--o| availability_slots : owns
-        users ||--o{ consultations  : patient
-        doctors ||--o{ consultations : doctor
-        availability_slots ||--o| consultations : slot-for
-        consultations ||--o| payments          : paid-by
-        consultations ||--o| prescriptions     : prescribed
-        users ||--o{ idempotency_keys  : issued
-        users ||--o{ async_jobs        : owns
-        consultations ||--o{ saga_steps : traced-by
+```mermaid
+erDiagram
+    USERS ||--o| USER_PROFILES : has
+    USERS ||--o| DOCTORS : backs
+    DOCTORS ||--o{ AVAILABILITY_SLOTS : owns
+    USERS ||--o{ CONSULTATIONS : "patient"
+    DOCTORS ||--o{ CONSULTATIONS : "doctor"
+    AVAILABILITY_SLOTS ||--o| CONSULTATIONS : "slot-for"
+    CONSULTATIONS ||--o| PAYMENTS : "paid-by"
+    CONSULTATIONS ||--o| PRESCRIPTIONS : prescribed
+    USERS ||--o{ IDEMPOTENCY_KEYS : issued
+    USERS ||--o{ ASYNC_JOBS : owns
+    CONSULTATIONS ||--o{ SAGA_STEPS : "traced-by"
+```
 
-Entity columns (key fields only):
+Full column-level diagram: [database-architecture.md](database-architecture.md).
 
-- users: id (uuid PK), username (unique), password_hash, role
-  (PATIENT|DOCTOR|ADMIN), mfa_enabled, active, created_at/updated_at
-- doctors: id, user_id (unique), specialization, consultation_fee,
-  years_experience, ratings, total_ratings, active
-- availability_slots: id, doctor_id, start_at, end_at, status
-  (AVAILABLE|LOCKED|BOOKED|CANCELLED), locked_by_id, lock_expires_at;
-  unique (doctor_id, start_at, end_at)
-- consultations: id, patient_id, doctor_id, slot_id, status
-  (PENDING_PAYMENT|PAID|COMPLETED|CANCELLED|NO_SHOW), scheduled_at,
-  completed_at, notes
-- prescriptions: id, consultation_id (unique), patient_id, doctor_id,
-  medications (JSON text), dosage_notes
-- payments: id, consultation_id, amount, currency (default INR), status
-  (CREATED|PAYING|CAPTURED|FAILED|REFUNDED), gateway_ref,
-  idempotency_key (unique)
-- audit_logs: id, actor_id, action, target, ip, details, occurred_at
-- idempotency_keys: id, user_id, method, path, body_hash, state
-  (PENDING|COMPLETED|FAILED), result_json; unique
-  (user_id, method, path, body_hash)
-- saga_steps: id, saga_id, step_index, step_name, status, detail
-- async_jobs: id, user_id, type, status (PENDING|IN_PROGRESS|DONE|FAILED|DEAD),
-  payload, attempt, max_attempt, scheduled_at, last_run_at, next_run_at,
-  lease_owner, lease_expiry
+## 6. ♻️ Async jobs
 
-## 6. Async jobs: retry, backoff, dead-letter
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING: producer enqueues (attempt=0, max=5)
+    PENDING --> IN_PROGRESS: worker claims lease, attempt+1
+    IN_PROGRESS --> DONE: success
+    IN_PROGRESS --> PENDING: failure, next_run_at = now + min(base·2^(attempt-1), cap)
+    IN_PROGRESS --> DEAD: attempt > maxRetries
+    DONE --> [*]
+    DEAD --> [*]
+```
 
-- Producer: JdbcAsyncBridge.enqueueAsyncJob writes a PENDING row with
-  attempt=0, max_attempt=5, next_run_at NULL (due immediately).
-- Consumer: workers poll findDueJobs(before) (status PENDING and
-  next_run_at IS NULL OR next_run_at <= before), claim under a lease
-  (PENDING -> IN_PROGRESS, attempt += 1).
-- On success: DONE.
-- On failure: scheduleRetry(nextRun) back to PENDING with
-  next_run_at = now + min(base * 2^(attempt-1), cap); when
-  attempt > maxRetries the job is dead-lettered to status DEAD.
-- Health signals: countByStatus(PENDING) and countByStatus(DEAD) feed the
-  SystemHealthResponse admin endpoint.
+- **Producer:** `JdbcAsyncBridge.enqueueAsyncJob` writes a `PENDING` row (`next_run_at NULL` = due immediately).
+- **Consumer:** workers poll `findDueJobs(before)` and claim under a lease.
+- **Health:** `countByStatus(PENDING)` and `countByStatus(DEAD)` feed the admin `SystemHealthResponse`.
 
-## 7. Caching strategy
+## 7. ⚡ Caching
 
-CacheConfig picks a RedisCacheManager when amrutam.cache.redis-enabled is
-true (default), else an in-memory InMemoryCacheManager with identical TTLs.
-Per-cache TTLs and key namespaces:
+`CacheConfig` uses `RedisCacheManager` when `amrutam.cache.redis-enabled=true` (default), otherwise an in-memory manager with identical TTLs. Null values are not cached.
 
 | Cache | TTL | Namespace |
 | --- | --- | --- |
-| users | 5m | users:* |
-| doctors | 15m | doctors:* |
-| availability | 60s | availability:<doctorId>:<from>:<to> |
-| consultations | 30s | consultations:* |
-| analytics | 5m | analytics:* |
+| users | 5 m | `users:*` |
+| doctors | 15 m | `doctors:*` |
+| availability | 60 s | `availability:<doctorId>:<from>:<to>` |
+| consultations | 30 s | `consultations:*` |
+| analytics | 5 m | `analytics:*` |
 
-Null values are disabled for caching; the in-memory manager mirrors the
-same TTLs locally for dev/tests.
+## 8. 📦 Partitioning (future ops step)
 
-## 8. Partitioning (future ops step)
+`schema.sql` is a single-partition baseline today. Planned path as data grows:
 
-schema.sql is a single-partition baseline today. When row counts grow,
-the documented ops path is:
+| Table | Strategy |
+| --- | --- |
+| `consultations` | RANGE by `scheduled_at` (monthly) |
+| `audit_logs` | RANGE by `occurred_at` (weekly) |
+| `payments`, `idempotency_keys` | RANGE by `created_at` when hot |
 
-- consultations -> RANGE partition by scheduled_at (monthly)
-- audit_logs -> RANGE partition by occurred_at (weekly)
-- payments / idempotency_keys -> RANGE by created_at when hot
+> [!NOTE]
+> Adopt a managed migration tool (e.g. Flyway) later. `spring.sql.init.mode=always` + `schema.sql` is the dev/docker path only.
 
-Adopt a managed migration tool (e.g. Flyway) in a future module;
-spring.sql.init.mode=always + schema.sql is the dev/docker path only.
+## 9. 🛟 DR / backup
 
-## 9. DR / backup
-
-- PostgreSQL: pg_dump logical backups (RPO target 15 min in prod); PITR
-  via WAL archiving as a follow-up. RTO target under 30 min for standby.
-- Redis: AOF everysec; cache is rebuildable (may lose up to one TTL
-  window after a restart).
-- async_jobs / saga_steps: live in Postgres, so they inherit the same
-  RPO/RTO; a crash mid-saga is recovered by the workers'
-  BookingSagaOrchestrator reconciliation sweep.
+| Component | Strategy | Targets |
+| --- | --- | --- |
+| PostgreSQL | `pg_dump` logical backups; PITR via WAL archiving as follow-up | RPO 15 min, RTO < 30 min for standby |
+| Redis | AOF `everysec`; cache is rebuildable | May lose up to one TTL window after restart |
+| `async_jobs` / `saga_steps` | Live in Postgres, inherit its RPO/RTO | Mid-saga crash recovered by `BookingSagaOrchestrator` sweep |

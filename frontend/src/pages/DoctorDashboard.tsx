@@ -2,10 +2,10 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useState,
-  type ReactNode
+  useState
 } from 'react';
-import { api, gql, ApiError } from '../lib/api-internal';
+import { api, ApiError } from '../lib/api';
+import { gql } from '../lib/graphql';
 import { SlotsManager } from '../components/SlotsManager';
 import {
   ErrorNote,
@@ -52,7 +52,7 @@ const MY_DOCTOR_QUERY = `
  * write path as a future step). The doctor flow therefore stops at "mark
  * complete" and shows the prescription read-only when one exists.
  */
-export default function DoctorDashboard(): ReactNode {
+export default function DoctorDashboard() {
   const { user } = useAuth();
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [doctorError, setDoctorError] = useState<string | null>(null);

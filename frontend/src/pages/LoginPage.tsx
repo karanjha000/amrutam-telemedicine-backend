@@ -1,9 +1,9 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ApiError } from '../lib/api';
 
-export default function LoginPage(): ReactNode {
+export default function LoginPage(): JSX.Element {
   const { login, verifyMfa, mfaPending, user, token, ready } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

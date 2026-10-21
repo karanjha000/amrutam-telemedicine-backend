@@ -9,7 +9,7 @@ import com.amrutam.api.util.CurrentClaims;
 import com.amrutam.common.exception.ApiErrorCode;
 import com.amrutam.common.exception.ErrorBody;
 import com.amrutam.common.exception.ForbiddenException;
-import com.amrutam.common.exception.NotFoundException;
+// import com.amrutam.common.exception.NotFoundException;
 import com.amrutam.common.exception.RestResponse;
 import com.amrutam.common.security.JwTokenService.Claims;
 import jakarta.servlet.http.HttpServletRequest;

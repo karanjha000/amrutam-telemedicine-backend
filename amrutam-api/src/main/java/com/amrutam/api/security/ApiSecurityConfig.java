@@ -1,6 +1,7 @@
 package com.amrutam.api.security;
 
 import com.amrutam.api.repository.UserRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -37,6 +38,7 @@ public class ApiSecurityConfig {
      * @return the password encoder
      */
     @Bean
+    @ConditionalOnMissingBean(PasswordEncoder.class)
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }

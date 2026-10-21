@@ -37,9 +37,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      * @param pageable paging
      * @return matching page
      */
-    @Query("select u from User u where lower(u.displayName) like %lower(:query) "
-            + "or lower(u.email) like %lower(:query) "
-            + "or lower(u.username) like %lower(:query)")
+    @Query("select u from User u where lower(u.displayName) like lower(concat('%', :query, '%')) "
+            + "or lower(u.email) like lower(concat('%', :query, '%')) "
+            + "or lower(u.username) like lower(concat('%', :query, '%'))")
     Page<User> searchUsers(String query, Pageable pageable);
 
     /**

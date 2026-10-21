@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 /** A small loading indicator used while a query is in flight. */
-export function Spinner({ label = 'Loading…' }: { label?: string }): ReactNode {
+export function Spinner({ label = 'Loading…' }: { label?: string }): JSX.Element {
   return (
     <div className="spinner" role="status" aria-live="polite">
       <span className="spinner__dot" aria-hidden="true" />
@@ -11,7 +11,7 @@ export function Spinner({ label = 'Loading…' }: { label?: string }): ReactNode
 }
 
 /** Renders an ApiError-style message for a page section. */
-export function ErrorNote({ error, onRetry }: { error: unknown; onRetry?: () => void }): ReactNode {
+export function ErrorNote({ error, onRetry }: { error: unknown; onRetry?: () => void }): JSX.Element {
   const message =
     error instanceof Error ? error.message : error === null || error === undefined ? 'Unknown error' : String(error);
   return (
@@ -34,7 +34,7 @@ export function SectionCard({
   title: string;
   actions?: ReactNode;
   children: ReactNode;
-}): ReactNode {
+}): JSX.Element {
   return (
     <section className="card">
       <div className="card__head">
@@ -46,7 +46,7 @@ export function SectionCard({
   );
 }
 
-export function StatusBadge({ status }: { status: string }): ReactNode {
+export function StatusBadge({ status }: { status: string }): JSX.Element {
   const cls = 'badge badge--' + status.toLowerCase();
   return <span className={cls}>{status}</span>;
 }

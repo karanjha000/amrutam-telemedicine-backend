@@ -1,6 +1,6 @@
 package com.amrutam.api.service.impl;
 
-import com.amrutam.api.dto.AvailabilitySlotDto;
+// import com.amrutam.api.dto.AvailabilitySlotDto;
 import com.amrutam.api.dto.DoctorDto;
 import com.amrutam.api.entity.Doctor;
 import com.amrutam.api.entity.User;

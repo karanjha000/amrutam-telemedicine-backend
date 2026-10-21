@@ -15,7 +15,7 @@ function dashboardPathFor(role: Role): string {
   }
 }
 
-export function Layout({ children }: { children: ReactNode }): ReactNode {
+export function Layout({ children }: { children: ReactNode }): JSX.Element {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();

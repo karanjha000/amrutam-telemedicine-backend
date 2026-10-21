@@ -1,7 +1,10 @@
-# Maven
-target/
+# Maven / Java build artifacts
+**/target/
+**/build/
+**/out/
+*.class
 *.jar
-!.mvn/wrapper/maven-wrapper.jar
+!**/maven-wrapper.jar
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
@@ -9,7 +12,15 @@ pom.xml.next
 release.properties
 dependency-reduced-pom.xml
 
-# IDE
+# Node / frontend generated assets
+**/node_modules/
+**/dist/
+**/coverage/
+**/.vite/
+**/*.tsbuildinfo
+**/.cache/
+
+# IDE / editor
 .idea/
 *.iml
 *.ipr
@@ -23,9 +34,19 @@ bin/
 
 # Logs / secrets / local env
 logs/
-*.log
+**/*.log
 .env
+.env.*
+!.env.example
 *.pem
+*.key
+*.crt
+*.p12
+*.local
 
-# Tooling
+# OS files
+.DS_Store
+Thumbs.db
+
+# Tooling / local metadata
 .claude/

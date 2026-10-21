@@ -12,6 +12,7 @@ import com.amrutam.common.config.CommonAutoConfiguration;
 import com.amrutam.common.security.AuthHeaderFilter;
 import com.amrutam.common.security.JwTokenService.Claims;
 import com.amrutam.common.security.JwTokenService;
+import com.amrutam.common.security.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +22,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+// import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -49,7 +50,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(controllers = {ConsultationsController.class})
 @ActiveProfiles("test")
-@Import({ApiSecurityConfig.class,
+@Import({SecurityConfig.class,
+        ApiSecurityConfig.class,
         CommonAutoConfiguration.class,
         GlobalExceptionHandler.class,
         CurrentClaims.class})

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import type { BookingResult, Consultation, Page, Prescription } from '../types';
 import { BookingFlow } from '../components/BookingFlow';
@@ -20,7 +20,7 @@ async function fetchPrescription(consultationId: string): Promise<Prescription |
   }
 }
 
-export default function PatientDashboard(): ReactNode {
+export default function PatientDashboard(): JSX.Element {
   const [consultations, setConsultations] = useState<Consultation[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

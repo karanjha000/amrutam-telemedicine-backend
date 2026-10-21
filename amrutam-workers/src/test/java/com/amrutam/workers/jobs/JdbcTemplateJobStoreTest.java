@@ -1,6 +1,6 @@
 package com.amrutam.workers.jobs;
 
-import java.sql.Timestamp;
+// import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -40,12 +40,13 @@ class JdbcTemplateJobStoreTest {
         ds.setPassword("");
         jdbc = new JdbcTemplate(ds);
         // The store's claim/complete SQL uses the PostgreSQL `now()` idiom,
-        // which H2 (even in PostgreSQL mode) does not provide. The H2 URL
-        // below therefore includes NON_KEYWORDS=NOW so that `now` is not
-        // treated as a reserved word and the alias below works; the alias
-        // itself is registered against a small test-only helper class.
+        // which H2 (even in PostgreSQL mode) does not provide. We register a
+        // test-only alias in H2's supported Java function syntax so the
+        // production SQL remains portable in the worker tests.
         try (var conn = ds.getConnection(); var st = conn.createStatement()) {
-            st.execute("CREATE ALIAS IF NOT EXISTS now FOR com.amrutam.workers.jobs.H2Functions.now");
+            st.execute(
+                    "CREATE ALIAS IF NOT EXISTS now AS 'java.sql.Timestamp now() { return new java.sql.Timestamp(System.currentTimeMillis()); }'"
+            );
         }
         // Load + run the H2 DDL.
         var schema = new String(

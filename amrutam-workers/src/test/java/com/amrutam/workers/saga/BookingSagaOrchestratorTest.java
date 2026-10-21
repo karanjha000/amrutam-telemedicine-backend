@@ -6,6 +6,8 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.amrutam.common.idempotency.IdempotencyRepository;
+import com.amrutam.workers.AmrutamWorkersApplication;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,8 +17,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
-
-import com.amrutam.common.idempotency.IdempotencyRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * profile so the auto-configured {@code TransactionTemplate} bean is
  * present. {@code reconcile()} is called manually — no scheduler wait.</p>
  */
-@SpringBootTest
+@SpringBootTest(classes = {AmrutamWorkersApplication.class, BookingSagaOrchestratorTest.TestConfig.class})
 @ActiveProfiles("test")
 @TestPropertySource("classpath:application-test.yml")
 class BookingSagaOrchestratorTest {

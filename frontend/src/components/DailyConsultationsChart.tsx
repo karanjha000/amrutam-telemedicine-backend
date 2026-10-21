@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import type { DailyConsultations } from '../types';
 
 interface Bar {
@@ -18,7 +17,7 @@ export function DailyConsultationsChart({
 }: {
   data: DailyConsultations;
   doctorNames?: Record<string, string>;
-}): ReactNode {
+}): JSX.Element {
   const bars: Bar[] = Object.entries(data.perDoctor).map(([doctorId, value]) => ({
     doctorId,
     label: doctorNames?.[doctorId] ?? doctorId.slice(0, 8),

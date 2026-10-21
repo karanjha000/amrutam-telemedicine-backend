@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import type { Doctor, Page } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { ErrorNote, fmtMoney, Spinner, SectionCard } from '../components/ui';
 
-export default function DoctorsPage(): ReactNode {
+export default function DoctorsPage(): JSX.Element {
   const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [doctors, setDoctors] = useState<Doctor[] | null>(null);
