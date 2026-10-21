@@ -26,6 +26,7 @@ public class JwtTokenService implements JwTokenService {
     public static final String CLAIM_ROLES = "roles";
 
     private final Algorithm algorithm;
+    private final Algorithm legacyAlgorithm;
     private final String issuer;
     private final int clockSkewSeconds;
     private final Clock clock;
@@ -47,6 +48,9 @@ public class JwtTokenService implements JwTokenService {
      */
     public JwtTokenService(JwtProperties props, Clock clock) {
         this.algorithm = Algorithm.HMAC256(normalizeKey(props.getSecret()));
+        this.legacyAlgorithm = props.getLegacySecret() == null || props.getLegacySecret().isBlank()
+                ? null
+                : Algorithm.HMAC256(normalizeKey(props.getLegacySecret()));
         this.issuer = props.getIssuer();
         this.clockSkewSeconds = props.getClockSkewSeconds();
         this.clock = clock;
@@ -85,7 +89,22 @@ public class JwtTokenService implements JwTokenService {
 
     @Override
     public JwTokenService.Claims parseAndValidate(String token) {
-        JWTVerifier verifier = JWT.require(algorithm).withIssuer(issuer).build();
+        try {
+            return verifyWith(algorithm, token);
+        } catch (JwtException primaryFailure) {
+            if (legacyAlgorithm == null) {
+                throw primaryFailure;
+            }
+            try {
+                return verifyWith(legacyAlgorithm, token);
+            } catch (JwtException ignored) {
+                throw primaryFailure;
+            }
+        }
+    }
+
+    private JwTokenService.Claims verifyWith(Algorithm signingAlgorithm, String token) {
+        JWTVerifier verifier = JWT.require(signingAlgorithm).withIssuer(issuer).build();
         DecodedJWT jwt;
         try {
             jwt = verifier.verify(token);

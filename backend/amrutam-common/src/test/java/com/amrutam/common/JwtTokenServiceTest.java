@@ -75,4 +75,23 @@ class JwtTokenServiceTest {
         assertThatThrownBy(() -> otherSvc.parseAndValidate(token))
                 .isInstanceOf(JwtException.class);
     }
+
+    @Test
+    void legacySecretStillValidDuringRotation() {
+        JwtProperties original = props();
+        JwtProperties rotated = props();
+        rotated.setSecret("fedcba9876543210fedcba9876543210fedcba9876543210");
+        rotated.setLegacySecret(original.getSecret());
+
+        String token = new JwtTokenService(original,
+                Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC))
+                .issue(new Subject(UUID.randomUUID(), "dave", List.of("ROLE_PATIENT")),
+                        "jti-legacy", 300L);
+
+        Claims claims = new JwtTokenService(rotated,
+                Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC))
+                .parseAndValidate(token);
+        assertThat(claims.userId()).isNotNull();
+        assertThat(claims.roles()).containsExactly("ROLE_PATIENT");
+    }
 }

@@ -17,6 +17,7 @@ public class JwtProperties {
             "amrutam-dev-hmac-secret-change-me-0123456789abcdef";
 
     private String secret = DEV_SECRET;
+    private String legacySecret;
     private String issuer = "amrutam";
     private long ttlSeconds = 900L;
     private int clockSkewSeconds = 30;
@@ -27,6 +28,14 @@ public class JwtProperties {
 
     public void setSecret(String secret) {
         this.secret = secret;
+    }
+
+    public String getLegacySecret() {
+        return legacySecret;
+    }
+
+    public void setLegacySecret(String legacySecret) {
+        this.legacySecret = legacySecret;
     }
 
     public String getIssuer() {

@@ -10,10 +10,23 @@ services:
       POSTGRES_DB: amrutam
       POSTGRES_USER: amrutam
       POSTGRES_PASSWORD: amrutam
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=3
+      - -c
+      - hot_standby=on
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=cp %p /var/lib/postgresql/archive/%f
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - pgarchive:/var/lib/postgresql/archive
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U amrutam -d amrutam"]
       interval: 5s
@@ -22,8 +35,11 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--save", "60", "1"]
     ports:
       - "6379:6379"
+    volumes:
+      - redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -44,6 +60,7 @@ services:
       DB_USER: amrutam
       DB_PASSWORD: amrutam
       REDIS_HOST: redis
+      # Dev-only placeholder; set a real secret in any real deployment.
       JWT_SECRET: amrutam-dev-hmac-secret-change-me-0123456789abcdef
     ports:
       - "8080:8080"
@@ -54,10 +71,8 @@ services:
         condition: service_healthy
 
   workers:
-    build:
-      context: .
-      dockerfile: Dockerfile
     image: amrutam:local
+    # Same multi-role image; the entrypoint runs /app/workers.jar.
     environment:
       AMRUTAM_ROLE: workers
       SPRING_PROFILES_ACTIVE: prod
@@ -76,6 +91,8 @@ services:
 
 volumes:
   pgdata:
+  pgarchive:
+  redisdata:
 
 networks:
   default:

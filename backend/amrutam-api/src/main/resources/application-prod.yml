@@ -28,9 +28,10 @@ server:
 amrutam:
   jwt:
     # REQUIRED in prod: a strong, randomly generated HMAC-SHA256 secret.
-    # Two-secret rotation: keep the previous secret as legacy-secret during
-    # the overlap window (docs/SECURITY.md §Key Rotation).
+    # During rotation, keep the previous secret in legacy-secret while the
+    # overlap window expires old tokens (docs/SECURITY.md §Key Rotation).
     secret: ${JWT_SECRET}
+    legacy-secret: ${JWT_LEGACY_SECRET:}
     issuer: amrutam
     ttl-seconds: 900
   cache:

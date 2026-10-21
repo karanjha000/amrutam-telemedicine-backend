@@ -21,7 +21,7 @@ flowchart LR
 | Payments | Duplicate billing | Idempotency natural key `(userId, method, path, bodyHash)`; unique `payments.idempotency_key`; `X-Idempotency-Key` header makes replays stable |
 | Doctor availability | Double-booking | Atomic `UPDATE … WHERE status='AVAILABLE'` (one winner); 409 on race; 15-min lock; saga reconciler cleans stuck rows |
 | Admin analytics | Privilege escalation | `hasRole('ADMIN')` on `/api/v1/admin/**`; separate OpenAPI "admin" group |
-| JWT secret | Reuse / leakage | Dev placeholder only; prod requires `JWT_SECRET`; two-secret overlap rotation; short TTL limits blast radius |
+| JWT secret | Reuse / leakage | Dev placeholder only; prod requires `JWT_SECRET`; legacy overlap rotation via `JWT_LEGACY_SECRET`; short TTL limits blast radius |
 | Audit trail | Tampering | Dedicated AUDIT logback appender (rolling file, 30-day retention) + `AuditWorker` draining the Redis audit stream |
 
 ## 2. 🔟 OWASP Top-10 mapping
@@ -63,11 +63,11 @@ sequenceDiagram
     Ops->>App: remove legacy-secret
 ```
 
-Config: `amrutam.jwt.secret` (current) and `amrutam.jwt.legacy-secret` (previous). Existing tokens stay valid until expiry; the 15-min TTL plus refresh endpoint keep the window short.
+Config: `amrutam.jwt.secret` (current) and `amrutam.jwt.legacy-secret` (previous). Existing tokens stay valid until expiry; the 15-min TTL plus refresh endpoint keep the window short. The runtime will accept both secrets during the overlap window while issuing only the current secret.
 
 ## 5. 📲 MFA / TOTP
 
 - When `users.mfa_enabled` is `TRUE`, `/auth/login` returns an `MfaChallengeDto` (secret + `otpauth://` URI) instead of a token; `/auth/mfa/verify` then issues the token.
 
-> [!CAUTION]
-> **Status: STUB.** TOTP verification currently accepts any well-formed 6-digit code until the RFC 6238 integration lands. The secret column and provisioning URI are already wired. Do not rely on MFA in production until this follow-up is done.
+> [!NOTE]
+> **Status: implemented.** TOTP verification is validated using RFC 6238-style time-window checks against the stored Base32 secret, and the auth service tests cover the challenge and verification flow.

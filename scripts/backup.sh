@@ -3,7 +3,12 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
+RETENTION_DAYS="${RETENTION_DAYS:-7}"
 mkdir -p "$BACKUP_DIR"
+
+# Keep a small, bounded backup set for local/dev use; production can raise this
+# and send archives to object storage / a secure backup bucket.
+find "$BACKUP_DIR" -type f -name '*.tar.gz' -mtime +"$RETENTION_DAYS" -delete 2>/dev/null || true
 
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 DB_HOST="${DB_HOST:-localhost}"
@@ -25,7 +30,7 @@ PGPASSWORD="${DB_PASSWORD:-amrutam}" "$PG_DUMP_BIN" \
   -p "$DB_PORT" \
   -U "$DB_USER" \
   -d "$DB_NAME" \
-  --clean --if-exists \
+  --clean --if-exists --no-owner --no-privileges \
   > "$DUMP_FILE"
 
 echo "Performing Redis snapshot to ${REDIS_FILE}"

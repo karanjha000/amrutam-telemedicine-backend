@@ -78,30 +78,48 @@ sequenceDiagram
     autonumber
     actor C as Client
     participant B as BookingService (api)
+    participant I as IdempotencyService
     participant DB as PostgreSQL
     participant W as Workers
-    C->>B: POST /consultations/booking
-    B->>DB: load slot (404 unknown / 409 not AVAILABLE)
-    B->>DB: insert consultation = PENDING_PAYMENT
-    B->>DB: lock slot AVAILABLE → LOCKED (409 on race)
-    B->>DB: insert payment = PAYING (dedupe by key)
-    B->>DB: capture PAYING → CAPTURED, consultation → PAID
-    B->>DB: enqueue async job (REQUIRES_NEW) + saga_steps
-    B-->>C: 201 {consultationId, slotId, paymentId, status}
+
+    C->>B: POST /consultations/booking + X-Idempotency-Key (optional)
+    B->>I: build idempotency identity (explicit key OR body hash)
+    alt duplicate request detected
+        I-->>B: replay previous payload
+        B-->>C: 200/201 same result without rebooking
+    else new request
+        B->>DB: load slot (404 unknown / 409 not AVAILABLE)
+        B->>DB: insert consultation = PENDING_PAYMENT
+        B->>DB: lock slot AVAILABLE → LOCKED (409 on race)
+        B->>DB: insert payment = PAYING (dedupe by key)
+        B->>DB: capture PAYING → CAPTURED, consultation → PAID
+        B->>DB: enqueue async job (REQUIRES_NEW) + saga_steps
+        B-->>C: 201 {consultationId, slotId, paymentId, status}
+    end
+
+    alt payment capture or saga step fails
+        B->>DB: mark payment FAILED
+        B->>DB: unlock slot
+        B->>DB: set consultation CANCELLED
+        B-->>C: error response (payment/slot reconcile)
+    end
+
     Note over W,DB: later, asynchronously
-    W->>DB: claim PENDING job (lease, attempt++)
+    W->>DB: claim due job (lease, attempt++)
     W->>W: run JobHandler
     W->>DB: DONE / retry / DEAD
 ```
 
 | # | Step | Detail |
 | --- | --- | --- |
+| 0 | Idempotency gate | `X-Idempotency-Key` overrides the body hash; duplicate requests replay the same response instead of creating a second booking |
 | 1 | Load slot | `404` unknown, `409` not `AVAILABLE` |
 | 2 | Create consultation | Status `PENDING_PAYMENT`, `scheduledAt = slot.startAt` |
 | 3 | Lock slot | Atomic `UPDATE … WHERE status='AVAILABLE'`; 0 rows means a competing booking won, so `ConflictException` (409) |
 | 4 | Create payment | Status `PAYING`; duplicate idempotency key returns the existing payment, no second charge |
 | 5 | Capture | `PAYING → CAPTURED` (simulated gateway); consultation becomes `PAID`; on failure, compensation runs in the same transaction |
-| 6 | Enqueue | `consultation.scheduled-notification` job written via `REQUIRES_NEW` (durable even if the outer transaction rolls back), plus `saga_steps` rows |
+| 6 | Compensation | If capture fails: `payments.markFailed` → `slots.unlockSlot` → consultation `CANCELLED`; saga step is recorded for traceability |
+| 7 | Enqueue | `consultation.scheduled-notification` job written via `REQUIRES_NEW` (durable even if the outer transaction rolls back), plus `saga_steps` rows |
 
 ### 4.2 Consultation state machine
 
