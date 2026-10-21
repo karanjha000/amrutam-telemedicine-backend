@@ -79,7 +79,6 @@ public class InMemoryCacheManager extends AbstractCacheManager {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
         public <T> T get(Object key, Class<T> type) {
             ExpiringCacheValue v = peek(key);
             return v == null ? null : type.cast(v.value());

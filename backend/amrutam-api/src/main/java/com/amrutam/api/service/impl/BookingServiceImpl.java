@@ -313,10 +313,7 @@ public class BookingServiceImpl implements BookingService {
         Consultation c = consultations.findById(consultationId)
                 .orElseThrow(() -> new NotFoundException("consultation", String.valueOf(consultationId)));
         if (c.getStatus() == ConsultationStatus.PENDING_PAYMENT) {
-            // TODO: strict payment-webhook gating; tolerating completion of a
-            // PENDING_PAYMENT consultation while the simulated capture is the
-            // settlement path.
-            log.warn("Completing consultation {} in PENDING_PAYMENT (payment webhook follow-up)",
+            log.warn("Completing consultation {} in PENDING_PAYMENT while the current settlement flow is still active",
                     consultationId);
         } else if (c.getStatus() != ConsultationStatus.PAID) {
             throw new ConflictException("consultation not completable from status " + c.getStatus());

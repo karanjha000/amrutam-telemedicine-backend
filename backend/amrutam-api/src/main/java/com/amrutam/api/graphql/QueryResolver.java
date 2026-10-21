@@ -8,7 +8,6 @@ import com.amrutam.api.graphql.dto.GraphQLConsultation;
 import com.amrutam.api.graphql.dto.GraphQLDoctor;
 import com.amrutam.api.graphql.dto.GraphQLSlot;
 import com.amrutam.api.repository.ConsultationRepository;
-import com.amrutam.api.repository.DoctorRepository;
 import com.amrutam.api.repository.UserRepository;
 import com.amrutam.api.service.DoctorService;
 import com.amrutam.api.entity.User;
@@ -44,22 +43,18 @@ public class QueryResolver {
     private static final Logger log = LoggerFactory.getLogger(QueryResolver.class);
 
     private final DoctorService doctorService;
-    private final DoctorRepository doctorRepo;
     private final UserRepository userRepo;
     private final ConsultationRepository consultationRepo;
 
     /**
      * @param doctorService doctor service
-     * @param doctorRepo doctor repository (slot window fetches)
      * @param userRepo user repository (batched display names)
      * @param consultationRepo consultation repository
      */
     public QueryResolver(DoctorService doctorService,
-                         DoctorRepository doctorRepo,
                          UserRepository userRepo,
                          ConsultationRepository consultationRepo) {
         this.doctorService = doctorService;
-        this.doctorRepo = doctorRepo;
         this.userRepo = userRepo;
         this.consultationRepo = consultationRepo;
     }

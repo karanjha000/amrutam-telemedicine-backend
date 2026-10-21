@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../../context/AuthContext';
+import { Layout } from '../../components/Layout';
 import { ApiError, api } from '../../lib/api';
 import type { LoginResult, User } from '../../types';
 import LoginPage from '../LoginPage';
@@ -126,5 +127,19 @@ describe('LoginPage', () => {
       'href',
       '/register'
     );
+  });
+
+  it('uses valid navigation targets that match the app routes', () => {
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/']}>
+          <Layout>
+            <div>content</div>
+          </Layout>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    expect(screen.getByRole('link', { name: /find a doctor/i })).toHaveAttribute('href', '/doctors');
   });
 });

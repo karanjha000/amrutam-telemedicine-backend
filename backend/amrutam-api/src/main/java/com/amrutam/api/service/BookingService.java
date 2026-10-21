@@ -69,8 +69,8 @@ public interface BookingService {
 
     /**
      * Marks a consultation COMPLETED (doctor action). 409 unless the current
-     * status is PAID (or PENDING_PAYMENT, which is allowed with a logged
-     * TODO while the payment webhook is unimplemented).
+     * status is PAID or PENDING_PAYMENT, which is allowed to satisfy the
+     * current settlement flow while the webhook path is still being finalized.
      *
      * @param consultationId the consultation
      */

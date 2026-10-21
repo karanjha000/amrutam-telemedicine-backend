@@ -115,7 +115,7 @@ class JobProcessorTest {
         @Bean
         DataSource dataSource() {
             DriverManagerDataSource ds = new DriverManagerDataSource();
-            ds.setUrl("jdbc:h2:mem:jobproc_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE"
+            ds.setUrl("jdbc:h2:mem:workers_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE"
                     + ";DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1");
             ds.setUsername("sa");
             ds.setPassword("");

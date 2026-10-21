@@ -24,6 +24,7 @@ createRoot(rootEl).render(
         <Layout>
           <Routes>
             <Route path="/" element={<DoctorsPage />} />
+            <Route path="/doctors" element={<DoctorsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route

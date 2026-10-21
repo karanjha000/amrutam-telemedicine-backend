@@ -123,7 +123,7 @@ public class UsersController {
         if (body.preferredTimezone() != null) profile.setPreferredTimezone(body.preferredTimezone());
         if (body.bio() != null) profile.setBio(body.bio());
         if (body.notes() != null) profile.setNotes(body.notes());
-        UserProfile saved = profiles.save(profile);
+        profiles.save(profile);
         log.info("Updated profile for user {} by {}", id, c.userId());
         UserDto target = users.me(id);
         return ResponseEntity.ok(RestResponse.ok(target));

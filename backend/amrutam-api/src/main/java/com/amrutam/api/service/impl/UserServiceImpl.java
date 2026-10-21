@@ -29,6 +29,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.ByteBuffer;
+import java.security.GeneralSecurityException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -144,11 +148,15 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public String verifyMfa(MfaVerifyRequest request) {
-        // TODO: real RFC-6238 TOTP verification; the stub accepts any
-        // well-formed 6-digit code while the integration is pending.
         User user = users.findByUsername(request.username())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
-        log.info("MFA verify (TOTP stub) for user={}", user.getUsername());
+        if (user.getMfaSecret() == null || user.getMfaSecret().isBlank()) {
+            throw new InvalidCredentialsException("MFA is not configured for this account");
+        }
+        if (!isValidTotp(user.getMfaSecret(), request.code())) {
+            throw new InvalidCredentialsException("Invalid MFA code");
+        }
+        log.info("MFA verify succeeded for user={}", user.getUsername());
         return issueFor(user);
     }
 
@@ -183,6 +191,57 @@ public class UserServiceImpl implements UserService {
         // future slice.
         Page<User> page = users.findAll(pageable);
         return page.map(this::toUserDto);
+    }
+
+    private static boolean isValidTotp(String base32Secret, String code) {
+        if (code == null || !code.matches("\\d{6}")) {
+            return false;
+        }
+        try {
+            byte[] key = decodeBase32(base32Secret);
+            long counter = Instant.now().getEpochSecond() / 30L;
+            ByteBuffer buffer = ByteBuffer.allocate(8);
+            buffer.putLong(counter);
+            byte[] timeBytes = buffer.array();
+            SecretKeySpec signingKey = new SecretKeySpec(key, "HmacSHA1");
+            Mac mac = Mac.getInstance("HmacSHA1");
+            mac.init(signingKey);
+            byte[] digest = mac.doFinal(timeBytes);
+            int offset = digest[digest.length - 1] & 0x0F;
+            int binary = ((digest[offset] & 0x7F) << 24)
+                    | ((digest[offset + 1] & 0xFF) << 16)
+                    | ((digest[offset + 2] & 0xFF) << 8)
+                    | (digest[offset + 3] & 0xFF);
+            int expected = binary % 1_000_000;
+            return String.format(Locale.ROOT, "%06d", expected).equals(code);
+        } catch (GeneralSecurityException e) {
+            log.warn("TOTP verification failed due to crypto exception for secret length {}",
+                    base32Secret == null ? 0 : base32Secret.length(), e);
+            return false;
+        }
+    }
+
+    private static byte[] decodeBase32(String base32) {
+        String cleaned = base32.trim().replaceAll("\\s+", "").toUpperCase(Locale.ROOT);
+        int value = 0;
+        int bits = 0;
+        byte[] out = new byte[(int) Math.ceil(cleaned.length() * 5.0 / 8.0)];
+        int index = 0;
+        for (char ch : cleaned.toCharArray()) {
+            if (ch >= 'A' && ch <= 'Z') {
+                value = (value << 5) | (ch - 'A');
+            } else if (ch >= '2' && ch <= '7') {
+                value = (value << 5) | (ch - '2' + 26);
+            } else {
+                continue;
+            }
+            bits += 5;
+            while (bits >= 8) {
+                bits -= 8;
+                out[index++] = (byte) ((value >> bits) & 0xFF);
+            }
+        }
+        return out;
     }
 
     private String issueFor(User user) {

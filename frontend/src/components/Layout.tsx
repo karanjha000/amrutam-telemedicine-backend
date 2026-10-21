@@ -30,7 +30,7 @@ export function Layout({ children }: { children: ReactNode }): JSX.Element {
   const links: Array<{ to: string; label: string; className?: string }> = [
     { to: '/doctors', label: 'Find a doctor' },
     ...(user !== null ? [{ to: dashPath, label: 'Dashboard' }] : []),
-    ...(user?.role === 'PATIENT' ? [{ to: '/patient/booking', label: 'Book' }] : [])
+    ...(user?.role === 'PATIENT' ? [{ to: '/patient', label: 'Book' }] : [])
   ];
 
   return (

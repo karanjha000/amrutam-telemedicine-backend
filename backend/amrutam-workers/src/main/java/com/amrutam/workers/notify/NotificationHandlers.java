@@ -37,16 +37,12 @@ final class NotificationHandlers {
     @ConditionalOnProperty(name = "amrutam.workers.enabled", havingValue = "true", matchIfMissing = true)
     public static class NotificationHandler implements JobHandler {
         private final NotificationSink sink;
-        private final com.amrutam.workers.config.WorkersProperties props;
 
         /**
          * @param sink active notification sink
-         * @param props workers configuration
          */
-        public NotificationHandler(NotificationSink sink,
-                                   com.amrutam.workers.config.WorkersProperties props) {
+        public NotificationHandler(NotificationSink sink) {
             this.sink = sink;
-            this.props = props;
         }
 
         @Override

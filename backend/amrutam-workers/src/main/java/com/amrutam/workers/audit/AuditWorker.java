@@ -54,6 +54,8 @@ public class AuditWorker {
         StreamOffset<byte[]> offset = StreamOffset.create(streamKey, ReadOffset.from(">"));
 
         try {
+            @SuppressWarnings("unchecked")
+            StreamOffset<byte[]>[] offsets = (StreamOffset<byte[]>[]) new StreamOffset[] { offset };
             var raw = redis.execute((RedisConnection conn) -> {
                 try {
                     conn.streamCommands().xGroupCreate(streamKey, CONSUMER_GROUP, ReadOffset.from("0"), false);
@@ -63,7 +65,7 @@ public class AuditWorker {
                 return conn.streamCommands().xReadGroup(
                         consumer,
                         StreamReadOptions.empty().count(BATCH),
-                        offset);
+                        offsets);
             }, true);
             if (raw != null) {
                 for (ByteRecord record : raw) {

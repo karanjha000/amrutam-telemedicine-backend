@@ -1,6 +1,7 @@
 package com.amrutam.api;
 
 import com.amrutam.api.repository.UserRepository;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,12 +26,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "AMRUTAM_TEST_PG", matches = "true")
 class AmrutamPostgresIntegrationTest {
 
+    @SuppressWarnings("resource")
     @Container
     static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer("postgres:16-alpine")
+            new PostgreSQLContainer<>("postgres:16-alpine")
                     .withDatabaseName("amrutam")
                     .withUsername("amrutam")
                     .withPassword("amrutam");
+
+    @AfterAll
+    static void stopPostgres() {
+        POSTGRES.stop();
+    }
 
     @DynamicPropertySource
     static void datasourceProperties(DynamicPropertyRegistry registry) {

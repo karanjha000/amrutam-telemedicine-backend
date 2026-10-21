@@ -21,6 +21,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -143,5 +148,79 @@ class AuthControllerMockMvcTest {
                         .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.token").value("fake-jwt"));
+    }
+
+    @Test
+    void mfaVerifyAcceptsOnlyValidTotp() throws Exception {
+        com.amrutam.api.entity.User user = new com.amrutam.api.entity.User();
+        user.setId(UUID.randomUUID());
+        user.setUsername("mfa-verify");
+        user.setPasswordHash(new BCryptPasswordEncoder().encode("pw"));
+        user.setRole(com.amrutam.api.entity.User.RoleString.PATIENT);
+        user.setMfaEnabled(true);
+        user.setMfaSecret("JBSWY3DPEHPK3PXP");
+        user.setActive(true);
+        when(users.findByUsername("mfa-verify")).thenReturn(Optional.of(user));
+        when(jwTokenService.issue(any(JwTokenService.Subject.class), anyString(), anyLong()))
+                .thenReturn("mfa-token");
+
+        String validCode = generateTotp(user.getMfaSecret());
+        String invalidCode = "000000";
+
+        mockMvc.perform(post("/api/v1/auth/mfa/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"mfa-verify\",\"code\":\"" + validCode + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value("mfa-token"));
+
+        mockMvc.perform(post("/api/v1/auth/mfa/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"mfa-verify\",\"code\":\"" + invalidCode + "\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private static String generateTotp(String base32Secret) {
+        try {
+            byte[] key = decodeBase32(base32Secret);
+            long timeCounter = System.currentTimeMillis() / 1000L / 30L;
+            ByteBuffer buffer = ByteBuffer.allocate(8);
+            buffer.putLong(timeCounter);
+            byte[] data = buffer.array();
+            SecretKeySpec signingKey = new SecretKeySpec(key, "HmacSHA1");
+            Mac mac = Mac.getInstance("HmacSHA1");
+            mac.init(signingKey);
+            byte[] hash = mac.doFinal(data);
+            int offset = hash[hash.length - 1] & 0x0F;
+            int binary = ((hash[offset] & 0x7F) << 24)
+                    | ((hash[offset + 1] & 0xFF) << 16)
+                    | ((hash[offset + 2] & 0xFF) << 8)
+                    | (hash[offset + 3] & 0xFF);
+            int otp = binary % 1_000_000;
+            return String.format(Locale.ROOT, "%06d", otp);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to generate TOTP", e);
+        }
+    }
+
+    private static byte[] decodeBase32(String base32) {
+        String cleaned = base32.trim().replaceAll("\\s+", "").toUpperCase(Locale.ROOT);
+        int value = 0;
+        int bits = 0;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        for (char ch : cleaned.toCharArray()) {
+            if (ch >= 'A' && ch <= 'Z') {
+                value = (value << 5) | (ch - 'A');
+            } else if (ch >= '2' && ch <= '7') {
+                value = (value << 5) | (ch - '2' + 26);
+            } else {
+                continue;
+            }
+            bits += 5;
+            while (bits >= 8) {
+                bits -= 8;
+                out.write((value >> bits) & 0xFF);
+            }
+        }
+        return out.toByteArray();
     }
 }
