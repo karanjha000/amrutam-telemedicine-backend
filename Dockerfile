@@ -41,8 +41,7 @@ WORKDIR /app
 COPY --from=build /build/amrutam-api/target/amrutam-api-*.jar  /app/api.jar
 COPY --from=build /build/amrutam-workers/target/amrutam-workers-*.jar /app/workers.jar
 
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+COPY --chmod=755 entrypoint.sh /app/entrypoint.sh
 
 ENV AMRUTAM_ROLE=api
 EXPOSE 8080

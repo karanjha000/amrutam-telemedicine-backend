@@ -22,5 +22,7 @@ case "$ROLE" in
     ;;
 esac
 
-# JAVA_OPTS is honored by operators (e.g. -Xmx, GC flags).
-exec java $JAVA_OPTS -jar "$JAR"
+# JAVA_OPTS is honored by operators (e.g. -Xmx, GC flags). Keep it defined even
+# when unset so shell strict mode does not abort container startup.
+JAVA_OPTS="${JAVA_OPTS:-}"
+exec java ${JAVA_OPTS} -jar "$JAR"
