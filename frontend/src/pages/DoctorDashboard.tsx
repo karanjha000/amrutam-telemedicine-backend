@@ -1,9 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { gql } from '../lib/graphql';
 import { SlotsManager } from '../components/SlotsManager';
@@ -26,6 +21,9 @@ interface GqlDoctorRow {
   yearsExperience: number;
   bio: string | null;
 }
+
+/** undefined = not loaded yet, null = none exists, 'error' = the request itself failed. */
+type RxState = Prescription | null | 'error' | undefined;
 
 const MY_DOCTOR_QUERY = `
   query MyDoctor {
@@ -52,7 +50,7 @@ const MY_DOCTOR_QUERY = `
  * write path as a future step). The doctor flow therefore stops at "mark
  * complete" and shows the prescription read-only when one exists.
  */
-export default function DoctorDashboard() {
+export default function DoctorDashboard(): JSX.Element {
   const { user } = useAuth();
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [doctorError, setDoctorError] = useState<string | null>(null);
@@ -61,7 +59,7 @@ export default function DoctorDashboard() {
   const [completing, setCompleting] = useState<string | null>(null);
   const [completeErrors, setCompleteErrors] = useState<Record<string, string | null>>({});
   const [rxOpen, setRxOpen] = useState<string | null>(null);
-  const [rx, setRx] = useState<Record<string, Prescription | null>>({});
+  const [rx, setRx] = useState<Record<string, RxState>>({});
 
   const resolveDoctor = useCallback(async (): Promise<void> => {
     if (user === null) {
@@ -96,24 +94,17 @@ export default function DoctorDashboard() {
     }
     setConsultError(null);
     try {
-      // The REST list endpoint is patient-scoped; there is no
-      // doctor-scoped listing in this scope. Query with the doctor's linked
-      // userId so we at least surface consultations this account can see,
-      // and show a hint when the result is empty.
+      // The REST list endpoint is patient-scoped; there is no doctor-scoped
+      // listing in this scope, so we query with the doctor's linked userId.
       const page = await api<Page<Consultation>>('/api/v1/consultations', {
         query: { page: 0, size: 50, doctorId: doctor.userId }
       });
       setConsultations(page.content);
-      if (page.content.length === 0) {
-        setConsultError(
-          'No consultations found for your linked profile in this scope. Doctor-scoped consultation listing is a future backend step; your slot and completion actions remain available once a booking references you.'
-        );
-      }
     } catch (err) {
-      setConsultations([]);
+      setConsultations((prev) => prev ?? []);
       setConsultError(
         err instanceof ApiError
-          ? `Consultation listing is not available in this scope (${err.code}): ${err.message}`
+          ? `Could not load consultations (${err.code}): ${err.message}`
           : 'Failed to load consultations'
       );
     }
@@ -132,6 +123,9 @@ export default function DoctorDashboard() {
   );
 
   const completeConsultation = async (id: string): Promise<void> => {
+    if (!window.confirm('Mark this consultation as completed? This cannot be undone.')) {
+      return;
+    }
     setCompleting(id);
     setCompleteErrors((prev) => ({ ...prev, [id]: null }));
     try {
@@ -153,14 +147,15 @@ export default function DoctorDashboard() {
       return;
     }
     setRxOpen(id);
-    if (rx[id] === undefined) {
-      let value: Prescription | null = null;
+    const current = rx[id];
+    if (current === undefined || current === 'error') {
       try {
-        value = await api<Prescription>(`/api/v1/consultations/${id}/prescription`);
-      } catch {
-        value = null; // no prescription exists yet
+        const value = await api<Prescription>(`/api/v1/consultations/${id}/prescription`);
+        setRx((prev) => ({ ...prev, [id]: value }));
+      } catch (err) {
+        // ApiError = no prescription exists yet; anything else = the request failed.
+        setRx((prev) => ({ ...prev, [id]: err instanceof ApiError ? null : 'error' }));
       }
-      setRx((prev) => ({ ...prev, [id]: value }));
     }
   };
 
@@ -179,7 +174,14 @@ export default function DoctorDashboard() {
 
       <SectionCard title="Consultations to complete">
         {consultError !== null ? <p className="muted">{consultError}</p> : null}
-        {consultations === null ? (
+        {doctor === null ? (
+          // No linked profile (or still resolving): nothing to list, and no endless spinner.
+          doctorError !== null ? (
+            <p className="muted">Consultations will appear once your doctor profile is linked.</p>
+          ) : (
+            <Spinner label="Loading…" />
+          )
+        ) : consultations === null ? (
           <Spinner label="Loading…" />
         ) : upcoming.length === 0 ? (
           <p className="muted">No upcoming consultations.</p>
@@ -193,22 +195,27 @@ export default function DoctorDashboard() {
                 </div>
                 <code>{c.id}</code>
                 <div className="consultation-list__actions">
-                  <button
-                    type="button"
-                    className="btn btn--primary"
-                    disabled={completing === c.id}
-                    onClick={() => void completeConsultation(c.id)}
-                  >
-                    {completing === c.id ? 'Completing…' : 'Complete'}
-                  </button>
+                  {c.status === 'PAID' ? (
+                    <button
+                      type="button"
+                      className="btn btn--primary"
+                      disabled={completing === c.id}
+                      onClick={() => void completeConsultation(c.id)}
+                    >
+                      {completing === c.id ? 'Completing…' : 'Complete'}
+                    </button>
+                  ) : (
+                    <span className="muted">Awaiting payment</span>
+                  )}
                   <button
                     type="button"
                     className="btn btn--ghost"
+                    aria-expanded={rxOpen === c.id}
                     onClick={() => void showPrescription(c.id)}
                   >
                     {rxOpen === c.id ? 'Hide prescription' : 'Prescription'}
                   </button>
-                  {completeErrors[c.id] !== undefined && completeErrors[c.id] !== null ? (
+                  {completeErrors[c.id] ? (
                     <span className="form-error" role="alert">
                       {completeErrors[c.id]}
                     </span>
@@ -216,20 +223,7 @@ export default function DoctorDashboard() {
                 </div>
                 {rxOpen === c.id ? (
                   <div className="prescription-box">
-                    {rx[c.id] === undefined ? (
-                      <Spinner label="Loading…" />
-                    ) : rx[c.id] === null ? (
-                      <p className="muted">
-                        No prescription recorded for this consultation yet.
-                        Prescriptions are issued after the consultation is
-                        completed (write path is a future backend step).
-                      </p>
-                    ) : (
-                      <>
-                        {rx[c.id]?.medications ? <p>{rx[c.id]?.medications}</p> : null}
-                        {rx[c.id]?.dosageNotes ? <p>{rx[c.id]?.dosageNotes}</p> : null}
-                      </>
-                    )}
+                    <PrescriptionBox state={rx[c.id]} />
                   </div>
                 ) : null}
               </li>
@@ -238,5 +232,40 @@ export default function DoctorDashboard() {
         )}
       </SectionCard>
     </div>
+  );
+}
+
+function PrescriptionBox({ state }: { state: RxState }): JSX.Element {
+  if (state === undefined) {
+    return <Spinner label="Loading…" />;
+  }
+  if (state === 'error') {
+    return (
+      <p className="form-error" role="alert">
+        Could not load the prescription. Hide it and try again.
+      </p>
+    );
+  }
+  if (state === null) {
+    return (
+      <p className="muted">
+        No prescription recorded for this consultation yet. Writing prescriptions is not
+        available from this dashboard yet.
+      </p>
+    );
+  }
+  return (
+    <>
+      {state.medications ? (
+        <p>
+          <strong>Medications:</strong> {state.medications}
+        </p>
+      ) : null}
+      {state.dosageNotes ? (
+        <p>
+          <strong>Notes:</strong> {state.dosageNotes}
+        </p>
+      ) : null}
+    </>
   );
 }

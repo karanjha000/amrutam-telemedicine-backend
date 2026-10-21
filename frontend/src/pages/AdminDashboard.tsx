@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '../lib/api';
 import { DailyConsultationsChart } from '../components/DailyConsultationsChart';
 import { ErrorNote, fmtMoney, Spinner, SectionCard } from '../components/ui';
@@ -10,9 +10,12 @@ import type {
   SystemHealth
 } from '../types';
 
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function todayIso(): string {
-  const d = new Date();
-  return isoDate(d);
+  return isoDate(new Date());
 }
 
 function daysAgoIso(days: number): string {
@@ -21,31 +24,42 @@ function daysAgoIso(days: number): string {
   return isoDate(d);
 }
 
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-export default function AdminDashboard() {
+export default function AdminDashboard(): JSX.Element {
   const [date, setDate] = useState<string>(todayIso());
   const [daily, setDaily] = useState<DailyConsultations | null>(null);
+  const [dailyLoading, setDailyLoading] = useState(true);
   const [dailyError, setDailyError] = useState<string | null>(null);
   const [revenue, setRevenue] = useState<RevenueSummary | null>(null);
   const [revenueError, setRevenueError] = useState<string | null>(null);
   const [health, setHealth] = useState<SystemHealth | null>(null);
+  const [healthLoading, setHealthLoading] = useState(true);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [busy, setBusy] = useState(true);
+
+  // Only the latest daily request may update state, so quickly changing the
+  // date can never let a slow, older response overwrite the newer one.
+  const latestDaily = useRef(0);
 
   const loadDaily = useCallback(async (day: string): Promise<void> => {
+    const requestId = ++latestDaily.current;
+    setDailyLoading(true);
     setDailyError(null);
     try {
       const body = await api<DailyConsultations>('/api/v1/admin/analytics/daily-consultations', {
         method: 'POST',
         body: { date: day }
       });
-      setDaily(body);
+      if (requestId === latestDaily.current) {
+        setDaily(body);
+      }
     } catch (err) {
-      setDailyError(err instanceof ApiError ? err.message : 'Failed to load daily analytics');
-      setDaily(null);
+      if (requestId === latestDaily.current) {
+        setDailyError(err instanceof ApiError ? err.message : 'Failed to load daily analytics');
+        setDaily(null);
+      }
+    } finally {
+      if (requestId === latestDaily.current) {
+        setDailyLoading(false);
+      }
     }
   }, []);
 
@@ -64,6 +78,7 @@ export default function AdminDashboard() {
   }, []);
 
   const loadHealth = useCallback(async (): Promise<void> => {
+    setHealthLoading(true);
     try {
       const body = await api<SystemHealth>('/api/v1/admin/analytics/health', {
         method: 'POST',
@@ -72,6 +87,8 @@ export default function AdminDashboard() {
       setHealth(body);
     } catch {
       setHealth(null);
+    } finally {
+      setHealthLoading(false);
     }
   }, []);
 
@@ -86,26 +103,28 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  // Changing the date only refetches the daily numbers...
   useEffect(() => {
-    let cancelled = false;
-    const run = async (): Promise<void> => {
-      setBusy(true);
-      await Promise.all([loadDaily(date), loadRevenue(), loadHealth(), loadDoctors()]);
-      if (!cancelled) {
-        setBusy(false);
-      }
-    };
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [date, loadDaily, loadRevenue, loadHealth, loadDoctors]);
+    if (date !== '') {
+      void loadDaily(date);
+    }
+  }, [date, loadDaily]);
 
-  const doctorNames = Object.fromEntries(doctors.map((d) => [d.id, d.name]));
+  // ...while revenue, health and the doctor roster load once.
+  useEffect(() => {
+    void loadRevenue();
+    void loadHealth();
+    void loadDoctors();
+  }, [loadRevenue, loadHealth, loadDoctors]);
+
+  const doctorNames = useMemo(
+    () => Object.fromEntries(doctors.map((d) => [d.id, d.name])),
+    [doctors]
+  );
 
   const utilization =
     daily !== null && doctors.length > 0
-      ? Math.round((Object.keys(daily.perDoctor).length / doctors.length) * 100)
+      ? Math.min(100, Math.round((Object.keys(daily.perDoctor).length / doctors.length) * 100))
       : null;
 
   return (
@@ -119,18 +138,22 @@ export default function AdminDashboard() {
             <input
               type="date"
               value={date}
+              max={todayIso()}
               onChange={(ev) => setDate(ev.target.value)}
               aria-label="Select day"
             />
           </label>
         }
       >
-        {busy ? (
-          <Spinner label="Loading analytics…" />
-        ) : dailyError !== null ? (
+        {dailyError !== null ? (
           <ErrorNote error={dailyError} onRetry={() => void loadDaily(date)} />
+        ) : dailyLoading && daily === null ? (
+          <Spinner label="Loading analytics…" />
         ) : daily !== null ? (
-          <DailyConsultationsChart data={daily} doctorNames={doctorNames} />
+          <>
+            {dailyLoading ? <Spinner label="Updating…" /> : null}
+            <DailyConsultationsChart data={daily} doctorNames={doctorNames} />
+          </>
         ) : null}
       </SectionCard>
 
@@ -167,6 +190,7 @@ export default function AdminDashboard() {
                 aria-valuenow={utilization}
                 aria-valuemin={0}
                 aria-valuemax={100}
+                aria-label="Doctors with consultations"
               >
                 <div className="utilization__fill" style={{ width: `${utilization}%` }} />
               </div>
@@ -179,7 +203,9 @@ export default function AdminDashboard() {
         </SectionCard>
 
         <SectionCard title="System health">
-          {health === null ? (
+          {healthLoading ? (
+            <Spinner label="Loading…" />
+          ) : health === null ? (
             <p className="muted">System health unavailable.</p>
           ) : (
             <ul className="health-list">
@@ -193,7 +219,11 @@ export default function AdminDashboard() {
               </li>
               <li>
                 <span>Dead letters</span>
-                <strong>{health.deadLetters}</strong>
+                {health.deadLetters > 0 ? (
+                  <span className="badge badge--dead">{health.deadLetters}</span>
+                ) : (
+                  <strong>{health.deadLetters}</strong>
+                )}
               </li>
             </ul>
           )}
