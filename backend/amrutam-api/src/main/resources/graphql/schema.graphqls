@@ -5,6 +5,7 @@
 # plain DTOs (com.amrutam.api.graphql.dto.*) and delegate to the REST service
 # layer; no new data access happens here.
 
+scalar BigDecimal
 scalar Instant
 
 type Query {

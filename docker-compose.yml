@@ -39,7 +39,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: amrutam:local
+    image: amrutam-api:local
     container_name: amrutam-api
     environment:
       AMRUTAM_ROLE: api
@@ -69,7 +69,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: amrutam:local
+    image: amrutam-workers:local
     container_name: amrutam-workers
     environment:
       AMRUTAM_ROLE: workers

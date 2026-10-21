@@ -105,6 +105,7 @@ class AuthControllerMockMvcTest {
         user.setId(UUID.randomUUID());
         user.setUsername("mfauser");
         user.setPasswordHash(new BCryptPasswordEncoder().encode("pw"));
+        user.setRole(com.amrutam.api.entity.User.RoleString.PATIENT);
         user.setMfaEnabled(true);
         user.setMfaSecret("SECRET");
         user.setActive(true);
@@ -127,6 +128,7 @@ class AuthControllerMockMvcTest {
         user.setId(UUID.randomUUID());
         user.setUsername("nomfa");
         user.setPasswordHash(new BCryptPasswordEncoder().encode("pw"));
+        user.setRole(com.amrutam.api.entity.User.RoleString.PATIENT);
         user.setMfaEnabled(false);
         user.setActive(true);
         when(users.findByUsername("nomfa")).thenReturn(Optional.of(user));

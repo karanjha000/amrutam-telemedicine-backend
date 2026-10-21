@@ -186,7 +186,8 @@ public class UserServiceImpl implements UserService {
     }
 
     private String issueFor(User user) {
-        String roleAuthority = switch (user.getRole()) {
+        User.RoleString role = user.getRole() == null ? User.RoleString.PATIENT : user.getRole();
+        String roleAuthority = switch (role) {
             case PATIENT -> Roles.PATIENT;
             case DOCTOR -> Roles.DOCTOR;
             case ADMIN -> Roles.ADMIN;
@@ -197,8 +198,9 @@ public class UserServiceImpl implements UserService {
     }
 
     private UserDto toUserDto(User user) {
+        User.RoleString role = user.getRole() == null ? User.RoleString.PATIENT : user.getRole();
         return new UserDto(user.getId(), user.getUsername(), user.getDisplayName(),
-                user.getEmail(), user.getRole().name(), null, null);
+                user.getEmail(), role.name(), null, null);
     }
 
     private PatientDto toPatientDto(User user, UserProfile profile) {

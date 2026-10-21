@@ -39,23 +39,26 @@ public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, 
     /**
      * Concrete insert of a PENDING row.
      *
+     * <p>Spring Data requires modifying queries to return either {@code void} or
+     * an integer count. Returning the inserted entity is invalid and triggers a
+     * runtime error during booking execution.</p>
+     *
      * @param id surrogate key
      * @param userId user
      * @param method http method
      * @param path request path
      * @param bodyHash body hash
      * @param now timestamp
-     * @return the saved row
      */
     @Modifying
     @Query("insert into IdempotencyKey(id, userId, method, path, bodyHash, state, resultJson, createdAt, updatedAt) "
             + "values (:id, :userId, :method, :path, :bodyHash, 'PENDING', null, :now, :now)")
-    IdempotencyKey insertRow(@Param("id") UUID id,
-                             @Param("userId") UUID userId,
-                             @Param("method") String method,
-                             @Param("path") String path,
-                             @Param("bodyHash") String bodyHash,
-                             @Param("now") Instant now);
+    void insertRow(@Param("id") UUID id,
+                   @Param("userId") UUID userId,
+                   @Param("method") String method,
+                   @Param("path") String path,
+                   @Param("bodyHash") String bodyHash,
+                   @Param("now") Instant now);
 
     /**
      * SPI: {@inheritDoc}
