@@ -1,7 +1,10 @@
 package com.amrutam.api;
 
+import com.amrutam.api.security.ApiSecurityConfig;
+import com.amrutam.common.config.CommonAutoConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
@@ -14,6 +17,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @SpringBootApplication
 @EnableScheduling
+@Import({CommonAutoConfiguration.class, ApiSecurityConfig.class})
 public class AmrutamApiApplication {
 
     /**

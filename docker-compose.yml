@@ -53,7 +53,9 @@ services:
     image: amrutam:local
     environment:
       AMRUTAM_ROLE: api
-      SPRING_PROFILES_ACTIVE: prod
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:postgresql://postgres:5432/amrutam
+      DB_JDBC_URL: jdbc:postgresql://postgres:5432/amrutam
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_NAME: amrutam
@@ -75,7 +77,9 @@ services:
     # Same multi-role image; the entrypoint runs /app/workers.jar.
     environment:
       AMRUTAM_ROLE: workers
-      SPRING_PROFILES_ACTIVE: prod
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:postgresql://postgres:5432/amrutam
+      DB_JDBC_URL: jdbc:postgresql://postgres:5432/amrutam
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_NAME: amrutam

@@ -1,1 +1,2 @@
 com.amrutam.common.config.CommonAutoConfiguration
+com.amrutam.common.security.SecurityConfig

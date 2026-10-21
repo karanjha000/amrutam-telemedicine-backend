@@ -10,11 +10,13 @@ import com.amrutam.common.security.AuthHeaderFilter;
 import com.amrutam.common.security.JwTokenService;
 import com.amrutam.common.security.JwtProperties;
 import com.amrutam.common.security.JwtTokenService;
+import com.amrutam.common.security.SecurityConfig;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 
 /**
  * Auto-wires the reusable cross-cutting beans so that consuming modules
@@ -23,6 +25,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @EnableConfigurationProperties({JwtProperties.class, RateLimitConfig.class})
+@Import(SecurityConfig.class)
 public class CommonAutoConfiguration {
 
     /**
