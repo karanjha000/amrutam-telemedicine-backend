@@ -1,59 +1,50 @@
-# Single-command local deployment for Amrutam.
-# Start everything with: docker compose up --build -d
+# Amrutam local development / reference deployment.
+#
+# The api and workers services use the SAME multi-role image (built from the
+# root Dockerfile) and differ only by AMRUTAM_ROLE + role-specific env.
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: amrutam-postgres
     environment:
-      POSTGRES_DB: ${DB_NAME:-amrutam}
-      POSTGRES_USER: ${DB_USER:-amrutam}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-amrutam}
+      POSTGRES_DB: amrutam
+      POSTGRES_USER: amrutam
+      POSTGRES_PASSWORD: amrutam
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-amrutam} -d ${DB_NAME:-amrutam}"]
+      test: ["CMD-SHELL", "pg_isready -U amrutam -d amrutam"]
       interval: 5s
-      timeout: 5s
-      retries: 12
-    restart: unless-stopped
+      timeout: 3s
+      retries: 10
 
   redis:
     image: redis:7-alpine
-    container_name: amrutam-redis
-    command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
-      timeout: 5s
-      retries: 12
-    restart: unless-stopped
+      timeout: 3s
+      retries: 10
 
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    image: amrutam-api:local
-    container_name: amrutam-api
+    image: amrutam:local
     environment:
       AMRUTAM_ROLE: api
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SPRING_PROFILES_ACTIVE: prod
       DB_HOST: postgres
       DB_PORT: "5432"
-      DB_NAME: ${DB_NAME:-amrutam}
-      DB_USER: ${DB_USER:-amrutam}
-      DB_PASSWORD: ${DB_PASSWORD:-amrutam}
+      DB_NAME: amrutam
+      DB_USER: amrutam
+      DB_PASSWORD: amrutam
       REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      JWT_SECRET: ${JWT_SECRET:-amrutam-dev-hmac-secret-change-me-0123456789abcdef}
-      JWT_ISSUER: ${JWT_ISSUER:-amrutam}
-      AMRUTAM_SQL_INIT: always
+      JWT_SECRET: amrutam-dev-hmac-secret-change-me-0123456789abcdef
     ports:
       - "8080:8080"
     depends_on:
@@ -61,53 +52,30 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    restart: unless-stopped
-    volumes:
-      - ./logs:/app/logs
 
   workers:
     build:
       context: .
       dockerfile: Dockerfile
-    image: amrutam-workers:local
-    container_name: amrutam-workers
+    image: amrutam:local
     environment:
       AMRUTAM_ROLE: workers
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SPRING_PROFILES_ACTIVE: prod
       DB_HOST: postgres
       DB_PORT: "5432"
-      DB_NAME: ${DB_NAME:-amrutam}
-      DB_USER: ${DB_USER:-amrutam}
-      DB_PASSWORD: ${DB_PASSWORD:-amrutam}
+      DB_NAME: amrutam
+      DB_USER: amrutam
+      DB_PASSWORD: amrutam
       REDIS_HOST: redis
-      REDIS_PORT: "6379"
       AMRUTAM_WORKERS_ENABLED: "true"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    restart: unless-stopped
-    volumes:
-      - ./logs:/app/logs
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: amrutam-frontend
-    environment:
-      AMRUTAM_API_HOST: api:8080
-    depends_on:
-      api:
-        condition: service_started
-    ports:
-      - "80:80"
-    restart: unless-stopped
 
 volumes:
-  postgres_data:
-  redis_data:
+  pgdata:
 
 networks:
   default:
