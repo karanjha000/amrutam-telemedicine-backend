@@ -1,5 +1,9 @@
 # 🗄️ Database Architecture
 
+<!-- docs-nav -->
+<p align="center"><sub><a href="README.md">Hub</a> · <a href="Architecture-overview.md">Overview</a> · <a href="ARCHITECTURE.md">Deep dive</a> · <a href="backend-architecture.md">Backend</a> · <a href="frontend-architecture.md">Frontend</a> · <b>Database</b> · <a href="authentication-architecture.md">Auth</a> · <a href="api-endpoints.md">API</a> · <a href="SECURITY.md">Security</a> · <a href="tech-stack.md">Stack</a> · <a href="configuration-and-environment.md">Config</a> · <a href="setup.md">Setup</a> · <a href="observability.md">Observability</a> · <a href="testing.md">Testing</a> · <a href="troubleshooting.md">Troubleshooting</a></sub></p>
+
+
 > **PostgreSQL** is the system of record. **Redis** supports caching and streams. Redis complements Postgres; it never replaces it.
 
 ## 🧭 1. Where data lives
@@ -180,4 +184,9 @@ stateDiagram-v2
 
 ## 🏭 7. Operational considerations
 
-The local environment uses a simplified data model. Production is designed for backup, retention and scaling (partitioning plan and RPO/RTO targets in [ARCHITECTURE.md](ARCHITECTURE.md#8--partitioning)).
+The local environment uses a simplified data model. Production is designed for backup, retention and scaling (partitioning plan and RPO/RTO targets in [ARCHITECTURE.md](ARCHITECTURE.md#8--partitioning-future-ops-step)).
+
+<!-- docs-footer -->
+---
+
+<p align="center">⬅️ <a href="frontend-architecture.md">Frontend</a> · 🏠 <a href="README.md">Docs hub</a> · <a href="authentication-architecture.md">Auth</a> ➡️</p>

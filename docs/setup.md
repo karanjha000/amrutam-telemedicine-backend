@@ -1,5 +1,9 @@
 # 🚀 Setup and Startup
 
+<!-- docs-nav -->
+<p align="center"><sub><a href="README.md">Hub</a> · <a href="Architecture-overview.md">Overview</a> · <a href="ARCHITECTURE.md">Deep dive</a> · <a href="backend-architecture.md">Backend</a> · <a href="frontend-architecture.md">Frontend</a> · <a href="database-architecture.md">Database</a> · <a href="authentication-architecture.md">Auth</a> · <a href="api-endpoints.md">API</a> · <a href="SECURITY.md">Security</a> · <a href="tech-stack.md">Stack</a> · <a href="configuration-and-environment.md">Config</a> · <b>Setup</b> · <a href="observability.md">Observability</a> · <a href="testing.md">Testing</a> · <a href="troubleshooting.md">Troubleshooting</a></sub></p>
+
+
 > Runs entirely on **Docker Compose**. No local PostgreSQL or Redis installation needed.
 
 ## ⚡ Quick start
@@ -59,3 +63,8 @@ curl http://localhost:8080/actuator/health
 ## 📚 Next
 
 [README](README.md) · [ARCHITECTURE](ARCHITECTURE.md) · [SECURITY](SECURITY.md)
+
+<!-- docs-footer -->
+---
+
+<p align="center">⬅️ <a href="configuration-and-environment.md">Configuration</a> · 🏠 <a href="README.md">Docs hub</a> · <a href="observability.md">Observability</a> ➡️</p>

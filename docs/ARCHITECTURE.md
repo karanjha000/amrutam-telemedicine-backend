@@ -1,14 +1,21 @@
 # 🧩 Amrutam Architecture (Deep Dive)
 
+<!-- docs-nav -->
+<p align="center"><sub><a href="README.md">Hub</a> · <a href="Architecture-overview.md">Overview</a> · <b>Deep dive</b> · <a href="backend-architecture.md">Backend</a> · <a href="frontend-architecture.md">Frontend</a> · <a href="database-architecture.md">Database</a> · <a href="authentication-architecture.md">Auth</a> · <a href="api-endpoints.md">API</a> · <a href="SECURITY.md">Security</a> · <a href="tech-stack.md">Stack</a> · <a href="configuration-and-environment.md">Config</a> · <a href="setup.md">Setup</a> · <a href="observability.md">Observability</a> · <a href="testing.md">Testing</a> · <a href="troubleshooting.md">Troubleshooting</a></sub></p>
+
+
 > Module map · data flow · booking saga · ER model · async workers · caching · partitioning · disaster recovery
 
-**Contents:** [1 Overview](#1--overview) · [2 Boundaries](#2--module-boundaries) · [3 Data flow](#3--data-flow) · [4 Booking saga](#4--booking-saga) · [5 ER diagram](#5--er-diagram) · [6 Async jobs](#6--async-jobs) · [7 Caching](#7--caching) · [8 Partitioning](#8--partitioning) · [9 DR](#9--dr--backup)
+**Contents:** [1 Overview](#1--overview) · [2 Boundaries](#2--module-boundaries) · [3 Data flow](#3--data-flow) · [4 Booking saga](#4--booking-saga) · [5 ER diagram](#5--er-diagram) · [6 Async jobs](#6--async-jobs) · [7 Caching](#7--caching) · [8 Partitioning](#8--partitioning-future-ops-step) · [9 DR](#9--dr--backup)
 
 ---
 
 ## 1. 🔭 Overview
 
-Amrutam is a Java 21 / Spring Boot 3.3.x telemedicine backend: three Maven modules plus shared infrastructure (PostgreSQL 16 + Redis 7).
+Amrutam is a Java 21 / Spring Boot 3.3.x telemedicine platform implementation: three Maven modules plus shared infrastructure (PostgreSQL 16 + Redis 7). This document describes the current code shape and the intended architecture, but not every operational pattern is fully hardened or production-complete yet.
+
+> [!IMPORTANT]
+> The architecture is intentionally documented as both a working implementation and a design baseline. Several controls are present as functional scaffolding or partial implementations rather than finished production controls. In particular, the MFA/TOTP verification flow is a stub, and several disaster-recovery, partitioning, and production-hardening items are still future work rather than claims of full operational maturity.
 
 | Module | Responsibility | Owns |
 | --- | --- | --- |
@@ -216,3 +223,8 @@ stateDiagram-v2
 | PostgreSQL | `pg_dump` logical backups; PITR via WAL archiving as follow-up | RPO 15 min, RTO < 30 min for standby |
 | Redis | AOF `everysec`; cache is rebuildable | May lose up to one TTL window after restart |
 | `async_jobs` / `saga_steps` | Live in Postgres, inherit its RPO/RTO | Mid-saga crash recovered by `BookingSagaOrchestrator` sweep |
+
+<!-- docs-footer -->
+---
+
+<p align="center">⬅️ <a href="Architecture-overview.md">Overview</a> · 🏠 <a href="README.md">Docs hub</a> · <a href="backend-architecture.md">Backend</a> ➡️</p>

@@ -1,5 +1,9 @@
 # 🏛️ Architecture Overview
 
+<!-- docs-nav -->
+<p align="center"><sub><a href="README.md">Hub</a> · <b>Overview</b> · <a href="ARCHITECTURE.md">Deep dive</a> · <a href="backend-architecture.md">Backend</a> · <a href="frontend-architecture.md">Frontend</a> · <a href="database-architecture.md">Database</a> · <a href="authentication-architecture.md">Auth</a> · <a href="api-endpoints.md">API</a> · <a href="SECURITY.md">Security</a> · <a href="tech-stack.md">Stack</a> · <a href="configuration-and-environment.md">Config</a> · <a href="setup.md">Setup</a> · <a href="observability.md">Observability</a> · <a href="testing.md">Testing</a> · <a href="troubleshooting.md">Troubleshooting</a></sub></p>
+
+
 > A concise, end-to-end view of Amrutam. For the deep dive (saga, ER model, caching, DR) read [ARCHITECTURE.md](ARCHITECTURE.md).
 
 **Contents:** [Big picture](#-big-picture) · [Module tree](#-module-tree) · [Dependencies](#-dependency-direction) · [Request flow](#-request-lifecycle) · [Design principles](#-design-principles)
@@ -127,3 +131,8 @@ sequenceDiagram
 | Secure by default | JWT, role checks, ownership checks, rate limits |
 | Observable | Actuator, structured logs, trace-id on every response |
 | Container-first | One command starts the whole stack |
+
+<!-- docs-footer -->
+---
+
+<p align="center">🏠 <a href="README.md">Docs hub</a> · <a href="ARCHITECTURE.md">Deep dive</a> ➡️</p>

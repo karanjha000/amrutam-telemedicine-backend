@@ -462,3 +462,8 @@ flowchart LR
 | 7 | Postman results | Doctors and slots | `api-testing-evidence/07-postman-results-doctors.png` |
 | 8 | Postman results | Consultations | `api-testing-evidence/08-postman-results-consultations.png` |
 | 9 | Postman results | Payments and admin analytics | `api-testing-evidence/09-postman-results-payments-admin.png` |
+
+<!-- docs-footer -->
+---
+
+<p align="center">⬅️ <a href="testing.md">Testing</a> · 🏠 <a href="README.md">Docs hub</a> · <a href="troubleshooting.md">Troubleshooting</a> ➡️</p>

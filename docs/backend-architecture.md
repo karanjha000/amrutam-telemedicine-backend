@@ -1,5 +1,9 @@
 # ⚙️ Backend Architecture
 
+<!-- docs-nav -->
+<p align="center"><sub><a href="README.md">Hub</a> · <a href="Architecture-overview.md">Overview</a> · <a href="ARCHITECTURE.md">Deep dive</a> · <b>Backend</b> · <a href="frontend-architecture.md">Frontend</a> · <a href="database-architecture.md">Database</a> · <a href="authentication-architecture.md">Auth</a> · <a href="api-endpoints.md">API</a> · <a href="SECURITY.md">Security</a> · <a href="tech-stack.md">Stack</a> · <a href="configuration-and-environment.md">Config</a> · <a href="setup.md">Setup</a> · <a href="observability.md">Observability</a> · <a href="testing.md">Testing</a> · <a href="troubleshooting.md">Troubleshooting</a></sub></p>
+
+
 > A Maven multi-module project under `../backend`: **`amrutam-common`**, **`amrutam-api`**, **`amrutam-workers`**.
 
 ## 🌳 1. Module structure
@@ -93,3 +97,8 @@ The same code runs on local Docker and deployments with no hard-coded local conf
 | Structured logging | Machine-parsable logs |
 | Trace-id via MDC | Follow one request across log lines |
 | Audit trail | Who did what, and when |
+
+<!-- docs-footer -->
+---
+
+<p align="center">⬅️ <a href="ARCHITECTURE.md">Deep dive</a> · 🏠 <a href="README.md">Docs hub</a> · <a href="frontend-architecture.md">Frontend</a> ➡️</p>

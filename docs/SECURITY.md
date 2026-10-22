@@ -1,16 +1,25 @@
 # 🛡️ Amrutam Security
 
+<!-- docs-nav -->
+<p align="center"><sub><a href="README.md">Hub</a> · <a href="Architecture-overview.md">Overview</a> · <a href="ARCHITECTURE.md">Deep dive</a> · <a href="backend-architecture.md">Backend</a> · <a href="frontend-architecture.md">Frontend</a> · <a href="database-architecture.md">Database</a> · <a href="authentication-architecture.md">Auth</a> · <a href="api-endpoints.md">API</a> · <b>Security</b> · <a href="tech-stack.md">Stack</a> · <a href="configuration-and-environment.md">Config</a> · <a href="setup.md">Setup</a> · <a href="observability.md">Observability</a> · <a href="testing.md">Testing</a> · <a href="troubleshooting.md">Troubleshooting</a></sub></p>
+
+
 > Threat model · OWASP Top-10 mapping · key rotation · MFA notes
+
+> [!IMPORTANT]
+> This document captures the current security baseline and intended design, not a claim that every control is fully production-hardened. Several items are implemented as working foundations only; the strongest example is MFA/TOTP verification, which remains a stub. Operational hardening such as TLS enforcement, secret rotation automation, and full backup/DR runbooks are still explicit follow-up work.
 
 **Contents:** [1 Threat model](#1--threat-model) · [2 OWASP](#2--owasp-top-10-mapping) · [3 Encryption](#3--encryption-at-rest--in-transit) · [4 Key rotation](#4--key-rotation-jwt-hmac-secret) · [5 MFA](#5--mfa--totp)
 
-## 🧅 Defence in depth
+## 🧅 Current security baseline
 
 ```mermaid
 flowchart LR
     R["Request"] --> RL["🚦 Rate limit<br/>token bucket"] --> JW["🪪 JWT validation<br/>15-min TTL"] --> RB["🎭 Role check<br/>@PreAuthorize"] --> OW["🧍 Ownership check<br/>service layer"] --> ID["🔁 Idempotency"] --> DB[("💾 Data")]
     DB --> AU["📝 Audit trail"]
 ```
+
+This baseline is the current implementation pattern, not a claim of full production hardening. It should be read as the security foundation that exists today, with several controls still marked as partial or future work.
 
 ## 1. 🎯 Threat model
 
@@ -68,6 +77,12 @@ Config: `amrutam.jwt.secret` (current) and `amrutam.jwt.legacy-secret` (previous
 ## 5. 📲 MFA / TOTP
 
 - When `users.mfa_enabled` is `TRUE`, `/auth/login` returns an `MfaChallengeDto` (secret + `otpauth://` URI) instead of a token; `/auth/mfa/verify` then issues the token.
+- The current implementation includes the MFA challenge flow and a verification endpoint, but the verification logic is intentionally a stub for now.
 
 > [!NOTE]
-> **Status: implemented.** TOTP verification is validated using RFC 6238-style time-window checks against the stored Base32 secret, and the auth service tests cover the challenge and verification flow.
+> **Status: partial / stubbed implementation.** The code accepts any well-formed 6-digit verification code until the real TOTP integration lands. The logic is not yet a production-grade RFC 6238 implementation, and this should be treated as a placeholder rather than a verified secure MFA system.
+
+<!-- docs-footer -->
+---
+
+<p align="center">⬅️ <a href="api-endpoints.md">API endpoints</a> · 🏠 <a href="README.md">Docs hub</a> · <a href="tech-stack.md">Tech stack</a> ➡️</p>

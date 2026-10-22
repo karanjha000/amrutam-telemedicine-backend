@@ -1,5 +1,9 @@
 # 🔐 Authentication & Authorization
 
+<!-- docs-nav -->
+<p align="center"><sub><a href="README.md">Hub</a> · <a href="Architecture-overview.md">Overview</a> · <a href="ARCHITECTURE.md">Deep dive</a> · <a href="backend-architecture.md">Backend</a> · <a href="frontend-architecture.md">Frontend</a> · <a href="database-architecture.md">Database</a> · <b>Auth</b> · <a href="api-endpoints.md">API</a> · <a href="SECURITY.md">Security</a> · <a href="tech-stack.md">Stack</a> · <a href="configuration-and-environment.md">Config</a> · <a href="setup.md">Setup</a> · <a href="observability.md">Observability</a> · <a href="testing.md">Testing</a> · <a href="troubleshooting.md">Troubleshooting</a></sub></p>
+
+
 > A JWT-based, role-aware security model centred on the backend API.
 
 ## 🧱 1. Security model
@@ -55,7 +59,7 @@ Enforcing at both framework and service layers reduces the risk of unauthorized 
 When `users.mfa_enabled` is true, login returns a challenge instead of a token; verification then issues the final token.
 
 > [!WARNING]
-> TOTP verification is currently a **stub** that accepts any well-formed 6-digit code until the RFC 6238 integration lands. See [SECURITY.md](SECURITY.md#5--mfa--totp).
+> The MFA flow is present, but the current TOTP verification is a **stub**, not a production security control. It accepts any well-formed 6-digit code until the RFC 6238 integration lands. See [SECURITY.md](SECURITY.md#5--mfa--totp).
 
 ## 🎫 6. Token security
 
@@ -78,3 +82,8 @@ When `users.mfa_enabled` is true, login returns a challenge instead of a token; 
 ## 📌 8. Summary
 
 Bearer-token auth + role checks + ownership validation + audit capture + rate limits and idempotency safeguards: a balance of usability and protection.
+
+<!-- docs-footer -->
+---
+
+<p align="center">⬅️ <a href="database-architecture.md">Database</a> · 🏠 <a href="README.md">Docs hub</a> · <a href="api-endpoints.md">API endpoints</a> ➡️</p>

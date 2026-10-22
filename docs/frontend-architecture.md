@@ -1,5 +1,9 @@
 # 🖥️ Frontend Architecture
 
+<!-- docs-nav -->
+<p align="center"><sub><a href="README.md">Hub</a> · <a href="Architecture-overview.md">Overview</a> · <a href="ARCHITECTURE.md">Deep dive</a> · <a href="backend-architecture.md">Backend</a> · <b>Frontend</b> · <a href="database-architecture.md">Database</a> · <a href="authentication-architecture.md">Auth</a> · <a href="api-endpoints.md">API</a> · <a href="SECURITY.md">Security</a> · <a href="tech-stack.md">Stack</a> · <a href="configuration-and-environment.md">Config</a> · <a href="setup.md">Setup</a> · <a href="observability.md">Observability</a> · <a href="testing.md">Testing</a> · <a href="troubleshooting.md">Troubleshooting</a></sub></p>
+
+
 > A separate **React + TypeScript** app that serves the telemedicine UI, intentionally isolated from backend runtime composition.
 
 ## 🧰 1. Stack
@@ -76,3 +80,8 @@ flowchart LR
 ## 💡 7. Design intent
 
 Small, focused modules · clean split between UI and client access logic · role-based routes · simple backend integration points.
+
+<!-- docs-footer -->
+---
+
+<p align="center">⬅️ <a href="backend-architecture.md">Backend</a> · 🏠 <a href="README.md">Docs hub</a> · <a href="database-architecture.md">Database</a> ➡️</p>
