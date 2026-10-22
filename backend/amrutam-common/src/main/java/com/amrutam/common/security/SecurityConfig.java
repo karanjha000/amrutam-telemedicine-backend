@@ -3,11 +3,13 @@ package com.amrutam.common.security;
 import com.amrutam.common.exception.ApiErrorCode;
 import com.amrutam.common.exception.ErrorBody;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -81,7 +83,8 @@ public class SecurityConfig {
      */
     @Bean
     @Primary
-    public org.springframework.security.authentication.AuthenticationManager authenticationManager(
+    @ConditionalOnBean(org.springframework.security.authentication.AuthenticationProvider.class)
+    public AuthenticationManager authenticationManager(
             org.springframework.security.authentication.AuthenticationProvider authenticationProvider) {
         return new ProviderManager(authenticationProvider);
     }
